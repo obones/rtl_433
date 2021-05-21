@@ -51,7 +51,7 @@ void reflect_nibbles(uint8_t message[], unsigned num_bytes)
     }
 }
 
-unsigned extract_nibbles_4b1s(uint8_t *message, unsigned offset_bits, unsigned num_bits, uint8_t *dst)
+unsigned extract_nibbles_4b1s(uint8_t const *message, unsigned offset_bits, unsigned num_bits, uint8_t *dst)
 {
     unsigned ret = 0;
 
@@ -69,7 +69,7 @@ unsigned extract_nibbles_4b1s(uint8_t *message, unsigned offset_bits, unsigned n
     return ret;
 }
 
-unsigned extract_bytes_uart(uint8_t *message, unsigned offset_bits, unsigned num_bits, uint8_t *dst)
+unsigned extract_bytes_uart(uint8_t const *message, unsigned offset_bits, unsigned num_bits, uint8_t *dst)
 {
     unsigned ret = 0;
 
