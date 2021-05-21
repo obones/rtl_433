@@ -14,10 +14,68 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+
+/// Bit buffer.
+struct bitbuffer {
+    uint16_t num_rows;                      // Number of active rows
+    uint16_t bits_per_row[BITBUF_ROWS];     // Number of active bits per row
+    uint16_t syncs_before_row[BITBUF_ROWS]; // Number of sync pulses before row
+    bitarray_t bb;                          // The actual bits buffer
+};
+
+bitbuffer_t *bitbuffer_alloc()
+{
+    bitbuffer_t *result = malloc(sizeof(bitbuffer_t));
+    bitbuffer_clear(result);
+    return result;
+}
+
+void bitbuffer_free(bitbuffer_t *bits)
+{
+    free(bits);
+}
+
+uint16_t bitbuffer_num_rows(bitbuffer_t const *bits)
+{
+    return bits->num_rows;
+}
+
+bitrow_t *bitbuffer_bb(bitbuffer_t *bits)
+{
+    return &bits->bb[0];
+}
+
+bitrow_t const *bitbuffer_const_bb(bitbuffer_t const *bits)
+{
+    return &bits->bb[0];
+}
+
+void bitbuffer_set_bb(bitbuffer_t *bits, uint8_t row, uint8_t column, uint8_t value)
+{
+    bits->bb[row][column] = value;
+}
+
+uint16_t const *bitbuffer_bits_per_row(bitbuffer_t const *bits)
+{
+    return &bits->bits_per_row[0];
+}
+
+void bitbuffer_set_bits_per_row(bitbuffer_t *bits, uint8_t row, uint8_t value)
+{
+    bits->bits_per_row[row] = value;
+}
+
+uint16_t const *bitbuffer_syncs_before_row(bitbuffer_t const *bits)
+{
+    return &bits->syncs_before_row[0];
+}
+
 void bitbuffer_clear(bitbuffer_t *bits)
 {
     bits->num_rows = 0;
     memset(bits->bits_per_row, 0, BITBUF_ROWS * 2);
+    memset(bits->syncs_before_row, 0, BITBUF_ROWS * sizeof(bits->syncs_before_row[0]));
     memset(bits->bb, 0, BITBUF_ROWS * BITBUF_COLS);
 }
 

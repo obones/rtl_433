@@ -22,13 +22,35 @@
 typedef uint8_t bitrow_t[BITBUF_COLS];
 typedef bitrow_t bitarray_t[BITBUF_ROWS];
 
-/// Bit buffer.
-typedef struct bitbuffer {
-    uint16_t num_rows;                      // Number of active rows
-    uint16_t bits_per_row[BITBUF_ROWS];     // Number of active bits per row
-    uint16_t syncs_before_row[BITBUF_ROWS]; // Number of sync pulses before row
-    bitarray_t bb;                          // The actual bits buffer
-} bitbuffer_t;
+/// Bit buffer, as an opaque structure to prevent other code from allocating it on stack
+typedef struct bitbuffer bitbuffer_t;
+
+/// Allocate a bitbuffer.
+bitbuffer_t *bitbuffer_alloc();
+
+/// Free the bitbuffer.
+void bitbuffer_free(bitbuffer_t *bits);
+
+/// Gets the number of rows in the bitbuffer
+uint16_t bitbuffer_num_rows(bitbuffer_t const *bits);
+
+/// Gets the bits in the bitbuffer
+bitrow_t *bitbuffer_bb(bitbuffer_t *bits);
+
+/// Gets the bits in the const bitbuffer
+bitrow_t const *bitbuffer_const_bb(bitbuffer_t const *bits);
+
+/// Sets the bits in the bitbuffer
+void bitbuffer_set_bb(bitbuffer_t *bits, uint8_t row, uint8_t column, uint8_t value);
+
+/// Gets the number of bits per row in the bitbuffer
+uint16_t const *bitbuffer_bits_per_row(bitbuffer_t const *bits);
+
+/// Sets the number of bits per row in the bitbuffer
+void bitbuffer_set_bits_per_row(bitbuffer_t *bits, uint8_t row, uint8_t value);
+
+/// Gets the number of syncs before row
+uint16_t const *bitbuffer_syncs_before_row(bitbuffer_t const *bits);
 
 /// Clear the content of the bitbuffer.
 void bitbuffer_clear(bitbuffer_t *bits);
