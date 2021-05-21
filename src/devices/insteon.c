@@ -115,8 +115,8 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
 {
     uint8_t results[35]   = {0};
     uint8_t results_len   = 0;
-    bitbuffer_t i_bits    = {0};
-    bitbuffer_t d_bits    = {0};
+    bitbuffer_t* i_bits    = bitbuffer_alloc();
+    bitbuffer_t* d_bits    = bitbuffer_alloc();
     unsigned int next_pos = 0;
     uint8_t i             = 0;
     uint8_t pkt_i, pkt_d;
@@ -154,20 +154,24 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
 
     */
 
-    next_pos = bitbuffer_manchester_decode(bits, row, start_pos, &i_bits, 5);
-    pkt_i    = reverse8(i_bits.bb[0][0]);
+    next_pos = bitbuffer_manchester_decode(bits, row, start_pos, i_bits, 5);
+    pkt_i    = reverse8(bitbuffer_bb(i_bits)[0][0]);
 
-    next_pos               = bitbuffer_manchester_decode(bits, row, next_pos, &d_bits, 8);
-    pkt_d                  = reverse8(d_bits.bb[0][0]);
+    next_pos               = bitbuffer_manchester_decode(bits, row, next_pos, d_bits, 8);
+    pkt_d                  = reverse8(bitbuffer_bb(d_bits)[0][0]);
     results[results_len++] = pkt_d;
 
     if (pkt_i != 31) { // should always be 31 ( 0b11111) in first block of packet
+        bitbuffer_free(i_bits);
+        bitbuffer_free(d_bits);
         return DECODE_ABORT_EARLY;
     }
 
     bitbuffer_extract_bytes(bits, row, start_pos + 26, &i, 2);
     // Check for packet delimiter  marker bits (at least once)
     if (i != 0xc0) {                 // 0b11000000
+        bitbuffer_free(i_bits);
+        bitbuffer_free(d_bits);
         return DECODE_FAIL_SANITY; // There should be two high bits '11' between packets
     }
 
@@ -185,7 +189,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
     if (decoder->verbose) {
         uint8_t buffy[4];
         fprintf(stderr, "%s\tstart_pos %u row_length %hu =  %u\n",
-                __func__, start_pos, bits->bits_per_row[row], (bits->bits_per_row[row] - start_pos));
+                __func__, start_pos, bitbuffer_bits_per_row(bits)[row], (bitbuffer_bits_per_row(bits)[row] - start_pos));
         fprintf(stderr, "%s\t%s\t%-5s\t%s\t%s\t%s\n",
                 __func__, "pkt_i", "pkt_d", "next", "length", "count");
 
@@ -201,7 +205,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
      } else {
          l = 278;
      }
-     if ((bits->bits_per_row[row] - start_pos)  < l) {
+     if ((bitbuffer_bits_per_row(bits)[row] - start_pos)  < l) {
         if (decoder->verbose) {
             fprintf(stderr, "%s\trow to short for %s packet type\n",
                 __func__, (extended ? "extended" : "regular"));
@@ -215,14 +219,14 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         the resulting 13bits contains 5bit of packet index
         and 8bits of data
     */
-    uint8_t prev_i=33;
+    uint8_t prev_i = 33;
     for (int j = 1; j < max_pkt_len; j++) {
         unsigned y;
         start_pos += 28;
-        bitbuffer_clear(&i_bits);
-        bitbuffer_clear(&d_bits);
-        next_pos = bitbuffer_manchester_decode(bits, row, start_pos, &i_bits, 5);
-        next_pos = bitbuffer_manchester_decode(bits, row, next_pos, &d_bits, 8);
+        bitbuffer_clear(i_bits);
+        bitbuffer_clear(d_bits);
+        next_pos = bitbuffer_manchester_decode(bits, row, start_pos, i_bits, 5);
+        next_pos = bitbuffer_manchester_decode(bits, row, next_pos, d_bits, 8);
 
         y = (next_pos - start_pos);
         if (y != 26) {
@@ -234,8 +238,8 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         // bitbuffer_extract_bytes(bits, row, start_pos -2, buff, 8);
         // printBits(sizeof(buff), buff);
 
-        pkt_i = reverse8(i_bits.bb[0][0]);
-        pkt_d = reverse8(d_bits.bb[0][0]);
+        pkt_i = reverse8(bitbuffer_bb(i_bits)[0][0]);
+        pkt_d = reverse8(bitbuffer_bb(d_bits)[0][0]);
 
         results[results_len++] = pkt_d;
 
@@ -252,9 +256,13 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         if (pkt_i < prev_i) {
             prev_i = pkt_i;
         } else {
+            bitbuffer_free(i_bits);
+            bitbuffer_free(d_bits);
             return DECODE_ABORT_EARLY;
         }
     }
+    bitbuffer_free(i_bits);
+    bitbuffer_free(d_bits);
 
     // if (decoder->verbose > 1) {
     //     for (int j=0; j < results_len; j++) {
@@ -407,51 +415,51 @@ static int insteon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // if (decoder->verbose > 1) fprintf(stderr, "row complete row / bit_index : %d, %d\n", row, bit_index);
 
     if (decoder->verbose > 1)
-        fprintf(stderr, "%s: new buffer %hu rows\n", __func__, bitbuffer->num_rows);
+        fprintf(stderr, "%s: new buffer %hu rows\n", __func__, bitbuffer_num_rows(bitbuffer));
 
     bitbuffer_invert(bitbuffer);
 
     /*
      * loop over all rows and look for preamble
     */
-    for (row = 0; row < bitbuffer->num_rows; ++row) {
+    for (row = 0; row < bitbuffer_num_rows(bitbuffer); ++row) {
         unsigned bit_index = 0;
         // Validate message and reject it as fast as possible : check for preamble
 
-        if (bitbuffer->bits_per_row[row] < INSTEON_BITLEN_MIN) {
+        if (bitbuffer_bits_per_row(bitbuffer)[row] < INSTEON_BITLEN_MIN) {
             // if (decoder->verbose )
-            //      fprintf(stderr, "%s: short row row=%hu len=%hu\n", __func__, row, bitbuffer->bits_per_row[row]);
+            //      fprintf(stderr, "%s: short row row=%hu len=%hu\n", __func__, row, bitbuffer_bits_per_row(bitbuffer)[row]);
             fail_value = DECODE_ABORT_LENGTH;
             continue;
         }
         // if (decoder->verbose)
-        //      fprintf(stderr, "%s: New row=%d len=%d\n", __func__,  row, bitbuffer->bits_per_row[row]);
+        //      fprintf(stderr, "%s: New row=%d len=%d\n", __func__,  row, bitbuffer_bits_per_row(bitbuffer)[row]);
 
         while (1) {
             unsigned search_index = bit_index;
             int ret;
 
-            if ((bitbuffer->bits_per_row[row] - bit_index) < INSTEON_BITLEN_MIN) {
+            if ((bitbuffer_bits_per_row(bitbuffer)[row] - bit_index) < INSTEON_BITLEN_MIN) {
                  // fprintf(stderr, "%s: short remainder\n", __func__);
                  break;
              }
 
             if (decoder->verbose > 1)
                  fprintf(stderr, "%s: bitbuffer_search at row / search_index : %d, %u %u (%d)\n",
-                     __func__, row, search_index, bit_index, bitbuffer->bits_per_row[row]);
+                     __func__, row, search_index, bit_index, bitbuffer_bits_per_row(bitbuffer)[row]);
 
             search_index = bitbuffer_search(bitbuffer, row, search_index, insteon_preamble, INSTEON_PREAMBLE_LEN);
 
-            if (search_index >= bitbuffer->bits_per_row[row]) {
+            if (search_index >= bitbuffer_bits_per_row(bitbuffer)[row]) {
                 if (decoder->verbose > 1 && bit_index == 0)
                     fprintf(stderr, "%s: insteon_preamble not found %u %u %d\n", __func__,
-                        search_index, bit_index, bitbuffer->bits_per_row[row]);
+                        search_index, bit_index, bitbuffer_bits_per_row(bitbuffer)[row]);
                 break;
             }
 
             if (decoder->verbose)
                 fprintf(stderr, "%s: parse_insteon_pkt at: row / search_index : %hu, %u (%hu)\n",
-                        __func__, row, search_index, bitbuffer->bits_per_row[row]);
+                        __func__, row, search_index, bitbuffer_bits_per_row(bitbuffer)[row]);
 
             ret = parse_insteon_pkt(decoder, bitbuffer, row, search_index);
 

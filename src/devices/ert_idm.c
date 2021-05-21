@@ -120,17 +120,17 @@ static int ert_idm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint16_t PacketCRC;
     // char  PacketCRC_str[8];
 
-    if (decoder->verbose && bitbuffer->bits_per_row[0] > 600) {
-        fprintf(stderr, "\n\n%s: rows=%hu, row0 len=%hu\n", __func__, bitbuffer->num_rows, bitbuffer->bits_per_row[0]);
+    if (decoder->verbose && bitbuffer_bits_per_row(bitbuffer)[0] > 600) {
+        fprintf(stderr, "\n\n%s: rows=%hu, row0 len=%hu\n", __func__, bitbuffer_num_rows(bitbuffer), bitbuffer_bits_per_row(bitbuffer)[0]);
     }
 
-    if (bitbuffer->bits_per_row[0] < IDM_PACKET_BITLEN) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < IDM_PACKET_BITLEN) {
 
         // to be removed later
-        if (decoder->verbose && bitbuffer->bits_per_row[0] > 600) {
+        if (decoder->verbose && bitbuffer_bits_per_row(bitbuffer)[0] > 600) {
             fprintf(stderr, "%s: DECODE_ABORT_LENGTH, row len=%hu < %d\n", __func__,
-                    bitbuffer->bits_per_row[0], IDM_PACKET_BITLEN);
-            fprintf(stderr, "%s: DECODE_ABORT_LENGTH 1 %hu < %d\n", __func__, bitbuffer->bits_per_row[0], IDM_PACKET_BITLEN);
+                    bitbuffer_bits_per_row(bitbuffer)[0], IDM_PACKET_BITLEN);
+            fprintf(stderr, "%s: DECODE_ABORT_LENGTH 1 %hu < %d\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0], IDM_PACKET_BITLEN);
             bitbuffer_print(bitbuffer);
         }
         return (DECODE_ABORT_LENGTH);
@@ -142,7 +142,7 @@ static int ert_idm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         fprintf(stderr, "%s: sync_index=%u\n", __func__, sync_index);
     }
 
-    if (sync_index >= bitbuffer->bits_per_row[0]) {
+    if (sync_index >= bitbuffer_bits_per_row(bitbuffer)[0]) {
 
         // to be removed later
         if (decoder->verbose) {
@@ -152,12 +152,12 @@ static int ert_idm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    if ((bitbuffer->bits_per_row[0] - sync_index) < IDM_PACKET_BITLEN) {
+    if ((bitbuffer_bits_per_row(bitbuffer)[0] - sync_index) < IDM_PACKET_BITLEN) {
 
         // to be removed later
         if (decoder->verbose) {
-            fprintf(stderr, "%s: DECODE_ABORT_LENGTH 2 %u < %d\n", __func__, (bitbuffer->bits_per_row[0] - sync_index), IDM_PACKET_BITLEN);
-            //  bitrow_printf(b, bitbuffer->bits_per_row[0], "%s bitrow_printf", __func__);
+            fprintf(stderr, "%s: DECODE_ABORT_LENGTH 2 %u < %d\n", __func__, (bitbuffer_bits_per_row(bitbuffer)[0] - sync_index), IDM_PACKET_BITLEN);
+            //  bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "%s bitrow_printf", __func__);
             bitbuffer_print(bitbuffer);
         }
         return DECODE_ABORT_LENGTH;
@@ -401,17 +401,17 @@ static int ert_netidm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint16_t PacketCRC;
     // char  PacketCRC_str[8];
 
-    if (decoder->verbose && bitbuffer->bits_per_row[0] > 600) {
-        fprintf(stderr, "\n\n%s: rows=%d, row0 len=%hu\n", __func__, bitbuffer->num_rows, bitbuffer->bits_per_row[0]);
+    if (decoder->verbose && bitbuffer_bits_per_row(bitbuffer)[0] > 600) {
+        fprintf(stderr, "\n\n%s: rows=%d, row0 len=%hu\n", __func__, bitbuffer_num_rows(bitbuffer), bitbuffer_bits_per_row(bitbuffer)[0]);
     }
 
-    if (bitbuffer->bits_per_row[0] < IDM_PACKET_BITLEN) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < IDM_PACKET_BITLEN) {
 
         // to be removed later
-        if (decoder->verbose && bitbuffer->bits_per_row[0] > 600) {
+        if (decoder->verbose && bitbuffer_bits_per_row(bitbuffer)[0] > 600) {
             fprintf(stderr, "%s: DECODE_ABORT_LENGTH, row len=%hu < %d\n", __func__,
-                    bitbuffer->bits_per_row[0], IDM_PACKET_BITLEN);
-            fprintf(stderr, "%s: DECODE_ABORT_LENGTH 1 %d < %d\n", __func__, bitbuffer->bits_per_row[0], IDM_PACKET_BITLEN);
+                    bitbuffer_bits_per_row(bitbuffer)[0], IDM_PACKET_BITLEN);
+            fprintf(stderr, "%s: DECODE_ABORT_LENGTH 1 %d < %d\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0], IDM_PACKET_BITLEN);
         }
         // bitbuffer_print(bitbuffer);
         return (DECODE_ABORT_LENGTH);
@@ -423,7 +423,7 @@ static int ert_netidm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         fprintf(stderr, "%s: sync_index=%u\n", __func__, sync_index);
     }
 
-    if (sync_index >= bitbuffer->bits_per_row[0]) {
+    if (sync_index >= bitbuffer_bits_per_row(bitbuffer)[0]) {
 
         // to be removed later
         if (decoder->verbose) {
@@ -433,10 +433,10 @@ static int ert_netidm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    if ((bitbuffer->bits_per_row[0] - sync_index) < IDM_PACKET_BITLEN) {
+    if ((bitbuffer_bits_per_row(bitbuffer)[0] - sync_index) < IDM_PACKET_BITLEN) {
         if (decoder->verbose) {
-            fprintf(stderr, "%s: DECODE_ABORT_LENGTH 2 %u < %d\n", __func__, (bitbuffer->bits_per_row[0] - sync_index), IDM_PACKET_BITLEN);
-            //  bitrow_printf(b, bitbuffer->bits_per_row[0], "%s bitrow_printf", __func__);
+            fprintf(stderr, "%s: DECODE_ABORT_LENGTH 2 %u < %d\n", __func__, (bitbuffer_bits_per_row(bitbuffer)[0] - sync_index), IDM_PACKET_BITLEN);
+            //  bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "%s bitrow_printf", __func__);
             bitbuffer_print(bitbuffer);
         }
         return DECODE_ABORT_LENGTH;

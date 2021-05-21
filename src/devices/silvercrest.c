@@ -20,11 +20,11 @@ static int silvercrest_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t cmd;
     data_t *data;
 
-    if (bitbuffer->bits_per_row[1] !=33)
+    if (bitbuffer_bits_per_row(bitbuffer)[1] !=33)
         return DECODE_ABORT_LENGTH;
 
     /* select second row, first might be bad */
-    b = bitbuffer->bb[1];
+    b = bitbuffer_bb(bitbuffer)[1];
     if ((b[0] == 0x7c) && (b[1] == 0x26)) {
         cmd = b[2] & 0xF;
         // Validate button

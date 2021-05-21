@@ -23,14 +23,14 @@ May be useful for other Cardin product too
 
 static int cardin_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     unsigned char dip[10] = {'-','-','-','-','-','-','-','-','-', '\0'};
 
 
     char *rbutton[4] = { "11R", "10R", "01R", "00L?" };
     data_t *data;
 
-    if (bitbuffer->bits_per_row[0] != 24)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 24)
       return DECODE_ABORT_LENGTH;
 
     // validate message as we can

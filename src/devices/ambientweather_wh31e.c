@@ -182,14 +182,14 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     uint8_t const preamble[] = {0xaa, 0x2d, 0xd4}; // (partial) preamble and sync word
 
-    for (row = 0; row < bitbuffer->num_rows; ++row) {
+    for (row = 0; row < bitbuffer_num_rows(bitbuffer); ++row) {
         // Validate message and reject it as fast as possible : check for preamble
         unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, 24);
         // no preamble detected, move to the next row
-        if (start_pos == bitbuffer->bits_per_row[row])
+        if (start_pos == bitbuffer_bits_per_row(bitbuffer)[row])
             continue; // DECODE_ABORT_EARLY
         if (decoder->verbose)
-            fprintf(stderr, "%s: WH31E/WH40 detected, buffer is %d bits length\n", __func__, bitbuffer->bits_per_row[row]);
+            fprintf(stderr, "%s: WH31E/WH40 detected, buffer is %d bits length\n", __func__, bitbuffer_bits_per_row(bitbuffer)[row]);
 
         // remove preamble, keep whole payload
         bitbuffer_extract_bytes(bitbuffer, row, start_pos + 24, b, 18 * 8);

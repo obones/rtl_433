@@ -52,7 +52,7 @@ Preamble is 111 0001 0101 0101 (0x7155).
 static int tpms_elantra2012_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t *b;
     uint32_t id;
     char id_str[9];
@@ -62,14 +62,16 @@ static int tpms_elantra2012_decode(r_device *decoder, bitbuffer_t *bitbuffer, un
     int temperature_c;
     int triggered, battery_low, storage;
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 64);
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, packet_bits, 64);
     // require 64 data bits
-    if (packet_bits.bits_per_row[0] < 64) {
+    if (bitbuffer_bits_per_row(packet_bits)[0] < 64) {
+        bitbuffer_free(packet_bits);
         return DECODE_ABORT_LENGTH;
     }
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
 
     if (crc8(b, 8, 0x07, 0x00)) {
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_MIC;
     }
 
@@ -85,6 +87,8 @@ static int tpms_elantra2012_decode(r_device *decoder, bitbuffer_t *bitbuffer, un
     storage = (b[6] & 0x04) >> 2;
     battery_low = (b[6] & 0x02) >> 1;
     triggered = (b[6] & 0x01) >> 0;
+
+    bitbuffer_free(packet_bits);
 
     /* clang-format off */
     data = data_make(
@@ -118,12 +122,12 @@ static int tpms_elantra2012_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int ret    = 0;
     int events = 0;
 
-    for (row = 0; row < bitbuffer->num_rows; ++row) {
+    for (row = 0; row < bitbuffer_num_rows(bitbuffer); ++row) {
         bitpos = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
         while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos,
                         preamble_pattern, 16)) + 128 <=
-                bitbuffer->bits_per_row[row]) {
+                bitbuffer_bits_per_row(bitbuffer)[row]) {
             ret = tpms_elantra2012_decode(decoder, bitbuffer, row, bitpos + 16);
             if (ret > 0)
                 events += ret;

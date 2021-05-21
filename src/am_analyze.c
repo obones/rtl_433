@@ -113,7 +113,7 @@ void am_analyze_classify(am_analyze_t *aa)
     unsigned int delta, p_limit;
     unsigned int a[3], b[2], a_cnt[3], a_new[3];
     unsigned int signal_distance_data[PULSE_DATA_SIZE] = {0};
-    bitbuffer_t bits = {0};
+    bitbuffer_t* bits = bitbuffer_alloc();
     unsigned int signal_type;
 
     if (!aa->signal_pulse_data[0][0])
@@ -278,47 +278,49 @@ void am_analyze_classify(am_analyze_t *aa)
     fprintf(stderr, "\nShort distance: %u, long distance: %u, packet distance: %u\n", a[0], a[1], a[2]);
     fprintf(stderr, "\np_limit: %u\n", p_limit);
 
-    bitbuffer_clear(&bits);
+    bitbuffer_clear(bits);
     if (signal_type == 1) {
         for (i = 0; i < aa->signal_pulse_counter; i++) {
             if (signal_distance_data[i] > 0) {
                 if (signal_distance_data[i] < (a[0] + a[1]) / 2) {
                     //                     fprintf(stderr, "0 [%d] %d < %d\n",i, signal_distance_data[i], (a[0]+a[1])/2);
-                    bitbuffer_add_bit(&bits, 0);
+                    bitbuffer_add_bit(bits, 0);
                 } else if ((signal_distance_data[i] > (a[0] + a[1]) / 2) && (signal_distance_data[i] < (a[1] + a[2]) / 2)) {
                     //                     fprintf(stderr, "0 [%d] %d > %d\n",i, signal_distance_data[i], (a[0]+a[1])/2);
-                    bitbuffer_add_bit(&bits, 1);
+                    bitbuffer_add_bit(bits, 1);
                 } else if (signal_distance_data[i] > (a[1] + a[2]) / 2) {
                     //                     fprintf(stderr, "0 [%d] %d > %d\n",i, signal_distance_data[i], (a[1]+a[2])/2);
-                    bitbuffer_add_row(&bits);
+                    bitbuffer_add_row(bits);
                 }
 
             }
 
         }
-        bitbuffer_print(&bits);
+        bitbuffer_print(bits);
     }
     if (signal_type == 2) {
         for (i = 0; i < aa->signal_pulse_counter; i++) {
             if (aa->signal_pulse_data[i][2] > 0) {
                 if (aa->signal_pulse_data[i][2] < p_limit) {
                     //                     fprintf(stderr, "0 [%d] %d < %d\n",i, aa->signal_pulse_data[i][2], p_limit);
-                    bitbuffer_add_bit(&bits, 0);
+                    bitbuffer_add_bit(bits, 0);
                 } else {
                     //                     fprintf(stderr, "1 [%d] %d > %d\n",i, aa->signal_pulse_data[i][2], p_limit);
-                    bitbuffer_add_bit(&bits, 1);
+                    bitbuffer_add_bit(bits, 1);
                 }
                 if ((signal_distance_data[i] >= (a[1] + a[2]) / 2)) {
                     //                     fprintf(stderr, "\\n [%d] %d > %d\n",i, signal_distance_data[i], (a[1]+a[2])/2);
-                    bitbuffer_add_row(&bits);
+                    bitbuffer_add_row(bits);
                 }
 
 
             }
         }
-        bitbuffer_print(&bits);
+        bitbuffer_print(bits);
     }
 
     // clear signal_pulse_data
     aa->signal_pulse_counter = 0;
+
+    bitbuffer_free(bits);
 }

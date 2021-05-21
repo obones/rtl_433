@@ -43,18 +43,18 @@ static int kedsum_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // the signal should start with 15 sync pulses (empty rows)
     // require at least 5 received syncs
-    if (bitbuffer->num_rows < 5
-            || bitbuffer->bits_per_row[0] != 0
-            || bitbuffer->bits_per_row[1] != 0
-            || bitbuffer->bits_per_row[2] != 0
-            || bitbuffer->bits_per_row[3] != 0
-            || bitbuffer->bits_per_row[4] != 0)
+    if (bitbuffer_num_rows(bitbuffer) < 5
+            || bitbuffer_bits_per_row(bitbuffer)[0] != 0
+            || bitbuffer_bits_per_row(bitbuffer)[1] != 0
+            || bitbuffer_bits_per_row(bitbuffer)[2] != 0
+            || bitbuffer_bits_per_row(bitbuffer)[3] != 0
+            || bitbuffer_bits_per_row(bitbuffer)[4] != 0)
         return DECODE_ABORT_EARLY;
 
     // the signal should have 6 repeats with a sync pulse between
     // require at least 4 received repeats
     int r = bitbuffer_find_repeated_row(bitbuffer, 4, 42);
-    if (r < 0 || bitbuffer->bits_per_row[r] != 42)
+    if (r < 0 || bitbuffer_bits_per_row(bitbuffer)[r] != 42)
         return DECODE_ABORT_LENGTH;
 
     // remove the two leading 0-bits and align the data

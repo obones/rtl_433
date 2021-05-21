@@ -114,20 +114,20 @@ static int interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     char *f4_latch_state;
     char *f5_latch_state;
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer_num_rows(bitbuffer) != 1) {
         return DECODE_ABORT_EARLY;
     }
 
     // Check if the message length is between the length seen in test files (57)
     // and the 64 bits discussed above.
-    if (bitbuffer->bits_per_row[0] < 57
-            || bitbuffer->bits_per_row[0] > 64) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 57
+            || bitbuffer_bits_per_row(bitbuffer)[0] > 64) {
         return DECODE_ABORT_LENGTH;
     }
 
     // search for preamble and exit if not found
     unsigned int bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, (sizeof preamble_pattern) * 8);
-    if (bit_offset == bitbuffer->bits_per_row[row]) {
+    if (bit_offset == bitbuffer_bits_per_row(bitbuffer)[row]) {
         if (decoder->verbose > 1)
             fprintf(stderr, "%s: Preamble not found, bit_offset: %u\n", __func__, bit_offset);
         return DECODE_FAIL_SANITY;

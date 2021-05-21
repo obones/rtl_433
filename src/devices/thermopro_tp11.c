@@ -25,7 +25,7 @@ static int thermopro_tp11_sensor_callback(r_device *decoder, bitbuffer_t *bitbuf
 {
     int temp_raw, row;
     float temp_c;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     unsigned int device, value;
     data_t *data;
     uint8_t ic;
@@ -35,7 +35,7 @@ static int thermopro_tp11_sensor_callback(r_device *decoder, bitbuffer_t *bitbuf
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[row] > 33)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] > 33)
         return DECODE_ABORT_LENGTH;
 
     ic = lfsr_digest8_reflect(bb[row], 3, 0x51, 0x04);

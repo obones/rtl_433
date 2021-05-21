@@ -27,15 +27,15 @@ A packet is made of 52 bits (13 nibbles S0 to S12):
 
 static int nice_flor_s_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    if (bitbuffer->num_rows != 2 || bitbuffer->bits_per_row[1] != 0) {
+    if (bitbuffer_num_rows(bitbuffer) != 2 || bitbuffer_bits_per_row(bitbuffer)[1] != 0) {
         return DECODE_ABORT_EARLY;
     }
-    if (bitbuffer->bits_per_row[0] != 52) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 52) {
         return DECODE_ABORT_LENGTH;
     }
 
     bitbuffer_invert(bitbuffer);
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[0];
 
     uint8_t button_id = b[0] >> 4;
     if (button_id < 1 || button_id > 4) {

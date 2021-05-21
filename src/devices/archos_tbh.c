@@ -66,7 +66,7 @@ static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     data_t *data;
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer_num_rows(bitbuffer) != 1) {
         return DECODE_ABORT_EARLY;
     }
 
@@ -74,12 +74,12 @@ static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // Validate message and reject it as fast as possible : check for preamble
     unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof (preamble) * 8);
 
-    if (start_pos == bitbuffer->bits_per_row[row]) {
+    if (start_pos == bitbuffer_bits_per_row(bitbuffer)[row]) {
         return DECODE_ABORT_EARLY; // no preamble detected
     }
 
     // check min length
-    if (bitbuffer->bits_per_row[row] < 12 * 8) { //sync(4) + preamble(4) + len(1) + data(1) + crc(2)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] < 12 * 8) { //sync(4) + preamble(4) + len(1) + data(1) + crc(2)
         return DECODE_ABORT_LENGTH;
     }
 

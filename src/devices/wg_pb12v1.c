@@ -57,8 +57,8 @@ static int wg_pb12v1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     float temp_c;
 
     // Validate package
-    b = bitbuffer->bb[0];
-    if (bitbuffer->bits_per_row[0] < 48)
+    b = bitbuffer_bb(bitbuffer)[0];
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 48)
         return DECODE_ABORT_LENGTH;
     if (b[0] != 0xFF) // Preamble
         return DECODE_ABORT_EARLY;

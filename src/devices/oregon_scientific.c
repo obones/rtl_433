@@ -210,7 +210,7 @@ static int validate_os_v2_message(r_device *decoder, unsigned char *msg, int bit
 
 static int oregon_scientific_v2_1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[0];
     data_t *data;
 
     // Check 2nd and 3rd bytes of stream for possible Oregon Scientific v2.1 sensor data (skip first byte to get past sync/startup bit errors)
@@ -218,13 +218,12 @@ static int oregon_scientific_v2_1_decode(r_device *decoder, bitbuffer_t *bitbuff
             && ((b[1] != 0xAA) || (b[2] != 0xAA))) {
         if (b[3] != 0) {
             if (decoder->verbose)
-                bitrow_printf(b, bitbuffer->bits_per_row[0], "Badly formatted OS v2.1 message: ");
+                bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "Badly formatted OS v2.1 message: ");
         }
         return DECODE_ABORT_EARLY;
     }
 
-    bitbuffer_t databits = {0};
-    uint8_t *msg = databits.bb[0];
+    bitbuffer_t* databits = bitbuffer_alloc();
 
     // Possible    v2.1 Protocol message
     unsigned int sync_test_val = ((unsigned)b[3] << 24) | (b[4] << 16) | (b[5] << 8) | (b[6]);
@@ -248,14 +247,17 @@ static int oregon_scientific_v2_1_decode(r_device *decoder, bitbuffer_t *bitbuff
             fprintf(stderr, "OS v2.1 Sync test val %08x found, starting decode at bit %d\n", sync_test_val, pattern_index);
         }
 
-        //bitrow_printf(b, bitbuffer->bits_per_row[0], "Raw OSv2 bits: ");
-        bitbuffer_manchester_decode(bitbuffer, 0, pattern_index + 40, &databits, 173);
-        reflect_nibbles(databits.bb[0], (databits.bits_per_row[0]+7)/8);
-        //bitbuffer_printf(&databits, "MC OSv2 bits (from %d+40): ", pattern_index);
+        //bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "Raw OSv2 bits: ");
+        bitbuffer_manchester_decode(bitbuffer, 0, pattern_index + 40, databits, 173);
+        reflect_nibbles(bitbuffer_bb(databits)[0], (bitbuffer_bits_per_row(databits)[0]+7)/8);
+        //bitbuffer_printf(databits, "MC OSv2 bits (from %d+40): ", pattern_index);
 
         break;
     }
-    int msg_bits = databits.bits_per_row[0];
+    int msg_bits = bitbuffer_bits_per_row(databits)[0];
+    bitrow_t msg = {0};
+    memcpy(&msg[0], bitbuffer_const_bb(databits)[0], sizeof(msg)); // do a copy to allow calling return below without worrying about freeing databits
+    bitbuffer_free(databits);
 
     int sensor_id = (msg[0] << 8) | msg[1];
     if (decoder->verbose) {
@@ -525,7 +527,7 @@ static int oregon_scientific_v2_1_decode(r_device *decoder, bitbuffer_t *bitbuff
     }
     else {
         if (decoder->verbose) {
-            bitrow_printf(b, bitbuffer->bits_per_row[0], "Possible Oregon Scientific v2.1 message, but sync nibble wasn't found. Raw: ");
+            bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "Possible Oregon Scientific v2.1 message, but sync nibble wasn't found. Raw: ");
         }
     }
 
@@ -534,7 +536,7 @@ static int oregon_scientific_v2_1_decode(r_device *decoder, bitbuffer_t *bitbuff
 
 static int oregon_scientific_v3_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[0];
     data_t *data;
 
     // Check stream for possible Oregon Scientific v3 protocol preamble
@@ -542,7 +544,7 @@ static int oregon_scientific_v3_decode(r_device *decoder, bitbuffer_t *bitbuffer
             && (((b[0]&0xf) != 0x00) || (b[1] != 0x00) || ((b[2]&0xc0) != 0x00))) {
         if (b[3] != 0) {
             if (decoder->verbose)
-                bitrow_printf(b, bitbuffer->bits_per_row[0], "Unrecognized Msg in OS v3: ");
+                bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "Unrecognized Msg in OS v3: ");
         }
         return DECODE_ABORT_EARLY;
     }
@@ -569,26 +571,26 @@ static int oregon_scientific_v3_decode(r_device *decoder, bitbuffer_t *bitbuffer
     int cm180i_pos = bitbuffer_search(bitbuffer, 0, 0, cm180i_pattern, 16) + 8; // keep the 0x46
     int alt_pos   = bitbuffer_search(bitbuffer, 0, 0, alt_pattern, 16) + 16;
 
-    if (bitbuffer->bits_per_row[0] - os_pos >= 7 * 8) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] - os_pos >= 7 * 8) {
         msg_pos = os_pos;
-        msg_len = bitbuffer->bits_per_row[0] - os_pos;
+        msg_len = bitbuffer_bits_per_row(bitbuffer)[0] - os_pos;
     }
 
     // 52 bits: secondary frame (instant watts only)
     // 108 bits: primary frame (instant watts + cumulative wattshour)
-    else if (bitbuffer->bits_per_row[0] - cm180_pos >= 52) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[0] - cm180_pos >= 52) {
         msg_pos = cm180_pos;
-        msg_len = bitbuffer->bits_per_row[0] - cm180_pos;
+        msg_len = bitbuffer_bits_per_row(bitbuffer)[0] - cm180_pos;
     }
 
-    else if (bitbuffer->bits_per_row[0] - cm180i_pos >= 84) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[0] - cm180i_pos >= 84) {
         msg_pos = cm180i_pos;
-        msg_len = bitbuffer->bits_per_row[0] - cm180i_pos;
+        msg_len = bitbuffer_bits_per_row(bitbuffer)[0] - cm180i_pos;
     }
 
-    else if (bitbuffer->bits_per_row[0] - alt_pos >= 7 * 8) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[0] - alt_pos >= 7 * 8) {
         msg_pos = alt_pos;
-        msg_len = bitbuffer->bits_per_row[0] - alt_pos;
+        msg_len = bitbuffer_bits_per_row(bitbuffer)[0] - alt_pos;
     }
 
     if (msg_len == 0)
@@ -811,13 +813,13 @@ static int oregon_scientific_v3_decode(r_device *decoder, bitbuffer_t *bitbuffer
         if (decoder->verbose) {
             fprintf(stderr, "Message received from unrecognized Oregon Scientific v3 sensor.\n");
             bitrow_printf(msg, msg_len, "Message: ");
-            bitrow_printf(b, bitbuffer->bits_per_row[0], "Raw: ");
+            bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "Raw: ");
         }
     }
     else if (b[3] != 0 ) {
         if (decoder->verbose) {
             fprintf(stderr, "Possible Oregon Scientific v3 message, but sync nibble wasn't found\n");
-            bitrow_printf(b, bitbuffer->bits_per_row[0], "Raw Data: ");
+            bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "Raw Data: ");
         }
     }
     return DECODE_FAIL_SANITY;

@@ -31,7 +31,7 @@ static int tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
 {
     data_t *data;
     unsigned int start_pos;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t b[9];
     unsigned id;
     char id_str[9];
@@ -39,16 +39,17 @@ static int tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     float pressure_kpa, temperature_c;
     int crc;
 
-    start_pos = bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 70); // 67 bits expected
+    start_pos = bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, packet_bits, 70); // 67 bits expected
     if (start_pos - bitpos < 67*2) {
+        bitbuffer_free(packet_bits);
         return 0;
     }
     if (decoder->verbose > 1)
-        bitbuffer_print(&packet_bits);
+        bitbuffer_print(packet_bits);
 
     // realign the buffer, prepending 6 bits of 0.
-    b[0] = packet_bits.bb[0][0] >> 6;
-    bitbuffer_extract_bytes(&packet_bits, 0, 2, b + 1, 64);
+    b[0] = bitbuffer_bb(packet_bits)[0][0] >> 6;
+    bitbuffer_extract_bytes(packet_bits, 0, 2, b + 1, 64);
     if (decoder->verbose > 1) {
         fprintf(stderr, "Realigned: ");
         bitrow_print(b, 72);
@@ -56,6 +57,7 @@ static int tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
 
     crc = b[8];
     if (crc8(b, 8, 0x13, 0x00) != crc) {
+        bitbuffer_free(packet_bits);
         return 0;
     }
 
@@ -69,6 +71,8 @@ static int tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     temp = b[7];
     pressure_kpa = (pressure1 - 40.0) * 2.48;
     temperature_c = temp - 40.0;
+
+    bitbuffer_free(packet_bits);
 
     if (pressure1 != pressure2) {
         if (decoder->verbose)
@@ -107,7 +111,7 @@ static int tpms_pmv107j_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 6)) + 67*2 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
         ret = tpms_pmv107j_decode(decoder, bitbuffer, 0, bitpos + 6);
         if (ret > 0)
             events += ret;

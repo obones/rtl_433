@@ -44,7 +44,7 @@ static int esa_cost_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned impulse_constant, impulses_val, impulses_total;
     float energy_total_val, energy_impulse_val;
 
-    if (bitbuffer->bits_per_row[0] != 160 || bitbuffer->num_rows != 1)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 160 || bitbuffer_num_rows(bitbuffer) != 1)
         return DECODE_ABORT_LENGTH;
 
     // remove first two bytes?

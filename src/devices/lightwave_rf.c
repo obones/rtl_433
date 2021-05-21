@@ -48,13 +48,13 @@ static int lightwave_rf_nibble_from_byte(uint8_t in)
 static int lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
 
     // Validate package
     // Transmitted pulses are always 72
     // Pulse 72 (delimiting "1" is not demodulated, as gap becomes End-Of-Message - thus expected length is 71
-    if (bitbuffer->bits_per_row[0] != 71
-            || bitbuffer->num_rows != 1) // There should be only one message (and we use the rest...)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 71
+            || bitbuffer_num_rows(bitbuffer) != 1) // There should be only one message (and we use the rest...)
         return DECODE_ABORT_LENGTH;
 
     // Polarity is inverted
@@ -63,7 +63,7 @@ static int lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Expand all "0" to "10" (bit stuffing)
     // row_in = 0, row_out = 1
     bitbuffer_add_row(bitbuffer);
-    for (unsigned n=0; n < bitbuffer->bits_per_row[0]; ++n) {
+    for (unsigned n=0; n < bitbuffer_bits_per_row(bitbuffer)[0]; ++n) {
         if (bitrow_get_bit(bb[0], n)) {
             bitbuffer_add_bit(bitbuffer, 1);
         } else {
@@ -74,7 +74,7 @@ static int lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Check length is correct
     // Due to encoding there will be two "0"s per byte, thus message grows to 91 bits
-    if (bitbuffer->bits_per_row[1] != 91)
+    if (bitbuffer_bits_per_row(bitbuffer)[1] != 91)
         return DECODE_ABORT_LENGTH;
 
     // Check initial delimiter bit is "1"

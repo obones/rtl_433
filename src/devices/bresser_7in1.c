@@ -41,9 +41,9 @@ static int bresser_7in1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data;
     uint8_t msg[25];
 
-    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[0] < 240-80) {
+    if (bitbuffer_num_rows(bitbuffer) != 1 || bitbuffer_bits_per_row(bitbuffer)[0] < 240-80) {
         if (decoder->verbose > 1)
-            fprintf(stderr, "%s: to few bits (%u)\n", __func__, bitbuffer->bits_per_row[0]);
+            fprintf(stderr, "%s: to few bits (%u)\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         return DECODE_ABORT_LENGTH; // unrecognized
     }
 
@@ -51,15 +51,15 @@ static int bresser_7in1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             preamble_pattern, sizeof(preamble_pattern) * 8);
     start_pos += sizeof(preamble_pattern) * 8;
 
-    if (start_pos >= bitbuffer->bits_per_row[0]) {
+    if (start_pos >= bitbuffer_bits_per_row(bitbuffer)[0]) {
         if (decoder->verbose > 1)
             fprintf(stderr, "%s: preamble not found\n", __func__);
         return DECODE_ABORT_EARLY; // no preamble found
     }
-    //if (start_pos + sizeof (msg) * 8 >= bitbuffer->bits_per_row[0]) {
-    if (start_pos + 21*8 >= bitbuffer->bits_per_row[0]) {
+    //if (start_pos + sizeof (msg) * 8 >= bitbuffer_bits_per_row(bitbuffer)[0]) {
+    if (start_pos + 21*8 >= bitbuffer_bits_per_row(bitbuffer)[0]) {
         if (decoder->verbose > 1)
-            fprintf(stderr, "%s: message too short (%u)\n", __func__, bitbuffer->bits_per_row[0] - start_pos);
+            fprintf(stderr, "%s: message too short (%u)\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0] - start_pos);
         return DECODE_ABORT_LENGTH; // message too short
     }
 

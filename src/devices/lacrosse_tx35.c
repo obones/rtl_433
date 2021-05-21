@@ -102,14 +102,14 @@ static int lacrosse_it(r_device *decoder, bitbuffer_t *bitbuffer, int device29or
             0x40,
     };
 
-    for (brow = 0; brow < bitbuffer->num_rows; ++brow) {
+    for (brow = 0; brow < bitbuffer_num_rows(bitbuffer); ++brow) {
         // Validate message and reject it as fast as possible : check for preamble
         unsigned int start_pos = bitbuffer_search(bitbuffer, brow, 0, preamble, 26);
         // no preamble detected, move to the next row
-        if (start_pos == bitbuffer->bits_per_row[brow])
+        if (start_pos == bitbuffer_bits_per_row(bitbuffer)[brow])
             continue; // DECODE_ABORT_EARLY
         if (decoder->verbose)
-            fprintf(stderr, "LaCrosse TX29/35 detected, buffer is %d bits length, device is TX%d\n", bitbuffer->bits_per_row[brow], device29or35);
+            fprintf(stderr, "LaCrosse TX29/35 detected, buffer is %d bits length, device is TX%d\n", bitbuffer_bits_per_row(bitbuffer)[brow], device29or35);
         // remove preamble and keep only five octets
         bitbuffer_extract_bytes(bitbuffer, brow, start_pos+22, out, 40);
 

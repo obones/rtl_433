@@ -15,7 +15,7 @@
 static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitbuffer_t packet = {0};
+    bitbuffer_t* packet;
     uint8_t *b;
     int is_envir = 0;
     unsigned int start_pos;
@@ -32,7 +32,7 @@ static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     start_pos = bitbuffer_search(bitbuffer, 0, 0, init_pattern_envir, 48);
 
-    if (start_pos + 47 + 112 <= bitbuffer->bits_per_row[0]) {
+    if (start_pos + 47 + 112 <= bitbuffer_bits_per_row(bitbuffer)[0]) {
         is_envir = 1;
         // bitbuffer_search matches patterns starting on a high bit, but the EnviR protocol
         // starts with a low bit, so we have to adjust the offset by 1 to prevent the
@@ -43,20 +43,22 @@ static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     else {
         start_pos = bitbuffer_search(bitbuffer, 0, 0, init_pattern_classic, 45);
 
-        if (start_pos + 45 + 112 > bitbuffer->bits_per_row[0]) {
+        if (start_pos + 45 + 112 > bitbuffer_bits_per_row(bitbuffer)[0]) {
             return DECODE_ABORT_EARLY;
         }
 
         start_pos += 45;
     }
 
-    start_pos = bitbuffer_manchester_decode(bitbuffer, 0, start_pos, &packet, 0);
+    packet = bitbuffer_alloc();
+    start_pos = bitbuffer_manchester_decode(bitbuffer, 0, start_pos, packet, 0);
 
-    if (packet.bits_per_row[0] < 64) {
+    if (bitbuffer_bits_per_row(packet)[0] < 64) {
+        bitbuffer_free(packet);
         return DECODE_ABORT_EARLY;
     }
 
-    b = packet.bb[0];
+    b = bitbuffer_bb(packet)[0];
     // Read data
     // Meter (b[0] = 0000xxxx) bits 5 and 4 are "unknown", but always 0 to date.
     if ((b[0] & 0xf0) == 0) {
@@ -83,6 +85,7 @@ static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
         decoder_output_data(decoder, data);
+        bitbuffer_free(packet);
         return 1;
     }
     // Counter (b[0] = 0100xxxx) bits 5 and 4 are "unknown", but always 0 to date.
@@ -101,9 +104,11 @@ static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                NULL);
        /* clang-format on */
        decoder_output_data(decoder, data);
+       bitbuffer_free(packet);
        return 1;
     }
 
+    bitbuffer_free(packet);
     return 0;
 }
 

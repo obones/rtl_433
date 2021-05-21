@@ -121,13 +121,13 @@ static char acurite_getChannel(uint8_t byte)
 
 static int acurite_rain_896_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[0];
     int id;
     float total_rain;
     data_t *data;
 
     // This needs more validation to positively identify correct sensor type, but it basically works if message is really from acurite raingauge and it doesn't have any errors
-    if (bitbuffer->bits_per_row[0] < 24)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 24)
         return DECODE_ABORT_LENGTH;
 
     if ((b[0] == 0) || (b[1] == 0) || (b[2] == 0) || (b[3] != 0) || (b[4] != 0))
@@ -139,7 +139,7 @@ static int acurite_rain_896_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     if (decoder->verbose > 1) {
         fprintf(stderr, "%s: Total Rain is %2.1fmm\n", __func__, total_rain);
-        bitrow_printf(b, bitbuffer->bits_per_row[0], "%s: Raw Message ", __func__);
+        bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "%s: Raw Message ", __func__);
     }
 
     /* clang-format off */
@@ -177,12 +177,12 @@ static int acurite_th_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t humidity, id, status;
     data_t *data;
 
-    for (uint16_t brow = 0; brow < bitbuffer->num_rows; ++brow) {
-        if (bitbuffer->bits_per_row[brow] != 40) {
+    for (uint16_t brow = 0; brow < bitbuffer_num_rows(bitbuffer); ++brow) {
+        if (bitbuffer_bits_per_row(bitbuffer)[brow] != 40) {
            continue; // DECODE_ABORT_LENGTH
         }
 
-        bb = bitbuffer->bb[brow];
+        bb = bitbuffer_bb(bitbuffer)[brow];
 
         cksum = (bb[0] + bb[1] + bb[2] + bb[3]);
 
@@ -352,8 +352,8 @@ static int acurite_6045_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     int exception = 0;
     data_t *data;
 
-    int browlen = (bitbuffer->bits_per_row[row] + 7) / 8;
-    uint8_t *bb = bitbuffer->bb[row];
+    int browlen = (bitbuffer_bits_per_row(bitbuffer)[row] + 7) / 8;
+    uint8_t *bb = bitbuffer_bb(bitbuffer)[row];
 
     channel = acurite_getChannel(bb[0]);  // same as TXR
     sprintf(channel_str, "%c", channel);  // No DATA_CHAR, need null term. str
@@ -499,8 +499,8 @@ static int acurite_atlas_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsig
     float tempf, wind_dir, wind_speed_mph;
     data_t *data;
 
-    int browlen = (bitbuffer->bits_per_row[row] + 7) / 8;
-    uint8_t *bb = bitbuffer->bb[row];
+    int browlen = (bitbuffer_bits_per_row(bitbuffer)[row] + 7) / 8;
+    uint8_t *bb = bitbuffer_bb(bitbuffer)[row];
 
     // {80} 82 f3 65 00 88 72 22 00 9f 95  {80} 86 f3 65 00 88 72 22 00 9f 99  {80} 8a f3 65 00 88 72 22 00 9f 9d
     // {80} 82 f3 66 00 05 e4 81 00 9f e4  {80} 86 f3 66 00 05 e4 81 00 9f e8  {80} 8a f3 66 00 05 e4 81 00 9f ec
@@ -509,7 +509,7 @@ static int acurite_atlas_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsig
     // {80} 82 f3 65 00 88 71 24 00 9f 96  {80} 86 f3 65 00 88 71 24 00 9f 9a  {80} 8a f3 65 00 88 71 24 00 9f 9e
     // {80} 82 f3 65 00 88 71 a5 00 9f 17  {80} 86 f3 65 00 88 71 a5 00 9f 1b  {80} 8a f3 65 00 88 71 a5 00 9f 1f
 
-    // bitrow_printf(bb, bitbuffer->bits_per_row[brow], "%s: Acurite Atlas raw msg: ", __func__);
+    // bitrow_printf(bb, bitbuffer_bits_per_row(bitbuffer)[brow], "%s: Acurite Atlas raw msg: ", __func__);
     message_type = bb[2] & 0x3f;
     sensor_id = ((bb[0] & 0x03) << 8) | bb[1];
     channel   = acurite_getChannel(bb[0]);
@@ -667,19 +667,19 @@ static int acurite_txr_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         bitbuffer_printf(bitbuffer, "%s: ", __func__);
     }
 
-    for (uint16_t brow = 0; brow < bitbuffer->num_rows; ++brow) {
-        browlen = (bitbuffer->bits_per_row[brow] + 7)/8;
-        bb = bitbuffer->bb[brow];
+    for (uint16_t brow = 0; brow < bitbuffer_num_rows(bitbuffer); ++brow) {
+        browlen = (bitbuffer_bits_per_row(bitbuffer)[brow] + 7)/8;
+        bb = bitbuffer_bb(bitbuffer)[brow];
 
         if (decoder->verbose > 1)
-            fprintf(stderr, "%s: row %d bits %d, bytes %d \n", __func__, brow, bitbuffer->bits_per_row[brow], browlen);
+            fprintf(stderr, "%s: row %d bits %d, bytes %d \n", __func__, brow, bitbuffer_bits_per_row(bitbuffer)[brow], browlen);
 
-        if ((bitbuffer->bits_per_row[brow] < ACURITE_TXR_BITLEN ||
-                bitbuffer->bits_per_row[brow] > ACURITE_5N1_BITLEN + 1)
-                && bitbuffer->bits_per_row[brow] != ACURITE_6045_BITLEN
-                && bitbuffer->bits_per_row[brow] != ACURITE_ATLAS_BITLEN
-                && bitbuffer->bits_per_row[brow] != ACURITE_515_BITLEN) {
-            if (decoder->verbose > 1 && bitbuffer->bits_per_row[brow] > 16)
+        if ((bitbuffer_bits_per_row(bitbuffer)[brow] < ACURITE_TXR_BITLEN ||
+                bitbuffer_bits_per_row(bitbuffer)[brow] > ACURITE_5N1_BITLEN + 1)
+                && bitbuffer_bits_per_row(bitbuffer)[brow] != ACURITE_6045_BITLEN
+                && bitbuffer_bits_per_row(bitbuffer)[brow] != ACURITE_ATLAS_BITLEN
+                && bitbuffer_bits_per_row(bitbuffer)[brow] != ACURITE_515_BITLEN) {
+            if (decoder->verbose > 1 && bitbuffer_bits_per_row(bitbuffer)[brow] > 16)
                 fprintf(stderr, "%s: skipping wrong len\n", __func__);
             continue; // DECODE_ABORT_LENGTH
         }
@@ -694,7 +694,7 @@ static int acurite_txr_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         int sum = add_bytes(bb, browlen - 1);
         if (sum == 0 || (sum & 0xff) != bb[browlen - 1]) {
             if (decoder->verbose)
-                bitrow_printf(bb, bitbuffer->bits_per_row[brow], "%s: bad checksum: ", __func__);
+                bitrow_printf(bb, bitbuffer_bits_per_row(bitbuffer)[brow], "%s: bad checksum: ", __func__);
             continue; // DECODE_FAIL_MIC
         }
 
@@ -804,7 +804,7 @@ static int acurite_txr_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                  message_type == ACURITE_MSGTYPE_3N1_WINDSPEED_TEMP_HUMIDITY ||
                  message_type == ACURITE_MSGTYPE_RAINFALL) {
             if (decoder->verbose)
-                bitrow_printf(bb, bitbuffer->bits_per_row[brow], "%s: Acurite 5n1 raw msg: ", __func__);
+                bitrow_printf(bb, bitbuffer_bits_per_row(bitbuffer)[brow], "%s: Acurite 5n1 raw msg: ", __func__);
             channel = acurite_getChannel(bb[0]);
             sprintf(channel_str, "%c", channel);
 
@@ -1009,18 +1009,18 @@ static int acurite_986_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int battery_low;
     data_t *data;
 
-    for (uint16_t brow = 0; brow < bitbuffer->num_rows; ++brow) {
+    for (uint16_t brow = 0; brow < bitbuffer_num_rows(bitbuffer); ++brow) {
 
         if (decoder->verbose > 1)
-            fprintf(stderr, "%s: row %d bits %d, bytes %d \n", __func__, brow, bitbuffer->bits_per_row[brow], browlen);
+            fprintf(stderr, "%s: row %d bits %d, bytes %d \n", __func__, brow, bitbuffer_bits_per_row(bitbuffer)[brow], browlen);
 
-        if (bitbuffer->bits_per_row[brow] < 39 ||
-            bitbuffer->bits_per_row[brow] > 43 ) {
-            if (decoder->verbose > 1 && bitbuffer->bits_per_row[brow] > 16)
+        if (bitbuffer_bits_per_row(bitbuffer)[brow] < 39 ||
+            bitbuffer_bits_per_row(bitbuffer)[brow] > 43 ) {
+            if (decoder->verbose > 1 && bitbuffer_bits_per_row(bitbuffer)[brow] > 16)
                 fprintf(stderr,"%s: skipping wrong len\n", __func__);
             continue; // DECODE_ABORT_LENGTH
         }
-        bb = bitbuffer->bb[brow];
+        bb = bitbuffer_bb(bitbuffer)[brow];
 
         // Reduce false positives
         // may eliminate these with a better PPM (precise?) demod.
@@ -1110,10 +1110,10 @@ static int acurite_606_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[row] > 33)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] > 33)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     if (b[4] != 0)
         return DECODE_FAIL_SANITY;
@@ -1172,10 +1172,10 @@ static int acurite_590tx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (decoder->verbose > 1)
         bitbuffer_printf(bitbuffer, "%s: ", __func__);
 
-    if (bitbuffer->bits_per_row[row] > 25)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] > 25)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     if (b[4] != 0) // last byte should be zero
         return DECODE_FAIL_SANITY;
@@ -1249,12 +1249,12 @@ static int acurite_00275rm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     //  This sensor repeats signal three times.  Store each copy.
-    for (uint16_t brow = 0; brow < bitbuffer->num_rows; ++brow) {
-        if (bitbuffer->bits_per_row[brow] != 88)
+    for (uint16_t brow = 0; brow < bitbuffer_num_rows(bitbuffer); ++brow) {
+        if (bitbuffer_bits_per_row(bitbuffer)[brow] != 88)
           continue; // DECODE_ABORT_LENGTH
         if (nsignal>=3)
           continue; // DECODE_ABORT_EARLY
-        memcpy(signal[nsignal], bitbuffer->bb[brow], 11);
+        memcpy(signal[nsignal], bitbuffer_bb(bitbuffer)[brow], 11);
         if (decoder->verbose)
             bitrow_printf(signal[nsignal], 11 * 8, "%s: ", __func__);
         nsignal++;

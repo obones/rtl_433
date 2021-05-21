@@ -43,10 +43,10 @@ static int springfield_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned tmpData;
     unsigned savData = 0;
 
-    for (row = 0; row < bitbuffer->num_rows; row++) {
-        if (bitbuffer->bits_per_row[row] != 36 && bitbuffer->bits_per_row[row] != 37)
+    for (row = 0; row < bitbuffer_num_rows(bitbuffer); row++) {
+        if (bitbuffer_bits_per_row(bitbuffer)[row] != 36 && bitbuffer_bits_per_row(bitbuffer)[row] != 37)
             continue; // DECODE_ABORT_LENGTH
-        b = bitbuffer->bb[row];
+        b = bitbuffer_bb(bitbuffer)[row];
         tmpData = ((unsigned)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
         if (tmpData == 0xffffffff)
             continue; // DECODE_ABORT_EARLY

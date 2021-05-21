@@ -44,7 +44,7 @@ static int schraeder_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int temperature; // deg C
 
     /* Reject wrong amount of bits */
-    if (bitbuffer->bits_per_row[0] != 68)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 68)
         return DECODE_ABORT_LENGTH;
 
     /* Shift the buffer 4 bits to remove the sync bits */
@@ -109,7 +109,7 @@ static int schrader_EG53MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int checksum;
 
     /* Check for incorrect number of bits received */
-    if (bitbuffer->bits_per_row[0] != 120)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 120)
         return DECODE_ABORT_LENGTH;
 
     /* Discard the first 40 bits */
@@ -191,42 +191,46 @@ the reverse of bitbuffer_manchester_decode(), so we invert the result.
 static int schrader_SMD3MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitbuffer_t decoded = { 0 };
+    bitbuffer_t* decoded;
     char id_str[9];
     unsigned flags, serial_id, pressure;
     int ret;
     uint8_t *b;
 
     /* Reject wrong length, with margin of error for extra bits at the end */
-    if (bitbuffer->bits_per_row[0] < NUM_BITS_TOTAL
-            || bitbuffer->bits_per_row[0] >= NUM_BITS_TOTAL + 8) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < NUM_BITS_TOTAL
+            || bitbuffer_bits_per_row(bitbuffer)[0] >= NUM_BITS_TOTAL + 8) {
         return DECODE_ABORT_LENGTH;
     }
 
     /* Check preamble */
-    b = bitbuffer->bb[0];
+    b = bitbuffer_bb(bitbuffer)[0];
     if (b[0] != 0xf5 || b[1] != 0x55 || b[2] != 0x55 || b[3] != 0x55
             || (b[4] >> 4) != 0xe) {
         return DECODE_FAIL_SANITY;
     }
 
     /* Check and decode the Manchester bits */
+    decoded = bitbuffer_alloc();
     ret = bitbuffer_manchester_decode(bitbuffer, 0, NUM_BITS_PREAMBLE,
-                                      &decoded, NUM_BITS_DATA);
+                                      decoded, NUM_BITS_DATA);
     if (ret != NUM_BITS_TOTAL) {
         if (decoder->verbose > 1) {
             fprintf(stderr, "%s: invalid Manchester data\n", __func__);
         }
+        bitbuffer_free(decoded);
         return DECODE_FAIL_MIC;
     }
-    bitbuffer_invert(&decoded);
+    bitbuffer_invert(decoded);
 
     /* Get the decoded data fields */
     /* FFFSSSSS SSSSSSSS SSSSSSSS SSSPPPPP PPPPPxxx */
-    b         = decoded.bb[0];
+    b         = bitbuffer_bb(decoded)[0];
     flags     = b[0] >> 5;
     serial_id = ((b[0] & 0x1f) << 19) | (b[1] << 11) | (b[2] << 3) | (b[3] >> 5);
     pressure  = ((b[3] & 0x1f) <<  5) | (b[4] >> 3);
+
+    bitbuffer_free(decoded);
 
     /* reject all-zero data */
     if (!flags && !serial_id && !pressure) {

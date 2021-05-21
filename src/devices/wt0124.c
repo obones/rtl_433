@@ -39,12 +39,12 @@ static int wt1024_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     float temp_c;
     uint8_t channel;
 
-    if (bitbuffer->bits_per_row[1] !=49)
+    if (bitbuffer_bits_per_row(bitbuffer)[1] !=49)
         return DECODE_ABORT_LENGTH;
 
 
     /* select row after preamble */
-    b = bitbuffer->bb[1];
+    b = bitbuffer_bb(bitbuffer)[1];
 
     /* Validate constant */
     if (b[0]>>4 != 0x5) {

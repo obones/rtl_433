@@ -89,23 +89,23 @@ static int bresser_6in1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data;
     uint8_t msg[18];
 
-    if (bitbuffer->num_rows != 1
-            || bitbuffer->bits_per_row[0] < 160
-            || bitbuffer->bits_per_row[0] > 440) {
+    if (bitbuffer_num_rows(bitbuffer) != 1
+            || bitbuffer_bits_per_row(bitbuffer)[0] < 160
+            || bitbuffer_bits_per_row(bitbuffer)[0] > 440) {
         if (decoder->verbose > 1)
-            fprintf(stderr, "%s: bit_per_row %u out of range\n", __func__, bitbuffer->bits_per_row[0]);
+            fprintf(stderr, "%s: bit_per_row %u out of range\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         return DECODE_ABORT_EARLY; // Unrecognized data
     }
 
     unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0,
             preamble_pattern, sizeof (preamble_pattern) * 8);
 
-    if (start_pos >= bitbuffer->bits_per_row[0]) {
+    if (start_pos >= bitbuffer_bits_per_row(bitbuffer)[0]) {
         return DECODE_ABORT_LENGTH;
     }
     start_pos += sizeof (preamble_pattern) * 8;
 
-    unsigned len = bitbuffer->bits_per_row[0] - start_pos;
+    unsigned len = bitbuffer_bits_per_row(bitbuffer)[0] - start_pos;
     if (len < sizeof(msg) * 8) {
         if (decoder->verbose > 1)
             fprintf(stderr, "%s: %u too short\n", __func__, len);

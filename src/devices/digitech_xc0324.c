@@ -170,22 +170,22 @@ static int xc0324_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         // Verbosely output the bitbuffer
         decoder_output_bitbufferf(decoder, bitbuffer, "XC0324:vvv hex(/binary) version of bitbuffer");
         // And then output each row to csv, json or whatever was specified.
-        for (r = 0; r < bitbuffer->num_rows; ++r) {
-            decoder_output_bitrowf(decoder, bitbuffer->bb[r], bitbuffer->bits_per_row[r],
+        for (r = 0; r < bitbuffer_num_rows(bitbuffer); ++r) {
+            decoder_output_bitrowf(decoder, bitbuffer_bb(bitbuffer)[r], bitbuffer_bits_per_row(bitbuffer)[r],
                     "XC0324:vvv row %03d", r);
         }
     }
     //A clean XC0324 transmission contains 3 repeats of a message in a single row.
     //But in case of transmission or demodulation glitches,
     //loop over all rows and check for salvageable messages.
-    for (r = 0; r < bitbuffer->num_rows; ++r) {
-        if (bitbuffer->bits_per_row[r] < XC0324_MESSAGE_BITLEN) {
+    for (r = 0; r < bitbuffer_num_rows(bitbuffer); ++r) {
+        if (bitbuffer_bits_per_row(bitbuffer)[r] < XC0324_MESSAGE_BITLEN) {
             // bail out of this "too short" row early
             if (decoder->verbose == 1) {
                 // Output the bad row, only for message level debug / deciphering.
-                decoder_output_bitrowf(decoder, bitbuffer->bb[r], bitbuffer->bits_per_row[r],
+                decoder_output_bitrowf(decoder, bitbuffer_bb(bitbuffer)[r], bitbuffer_bits_per_row(bitbuffer)[r],
                         "Bad message need %d bits got %d <- XC0324:vv row %d bit %d",
-                        XC0324_MESSAGE_BITLEN, bitbuffer->bits_per_row[r], r, 0);
+                        XC0324_MESSAGE_BITLEN, bitbuffer_bits_per_row(bitbuffer)[r], r, 0);
             }
             continue; // DECODE_ABORT_LENGTH
         }
@@ -195,7 +195,7 @@ static int xc0324_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         while ((bitpos = bitbuffer_search(bitbuffer, r, bitpos,
                         (const uint8_t *)&preamble_pattern, 8)) +
                         XC0324_MESSAGE_BITLEN <=
-                bitbuffer->bits_per_row[r]) {
+                bitbuffer_bits_per_row(bitbuffer)[r]) {
             ret = decode_xc0324_message(decoder, bitbuffer,
                     r, bitpos, events, &data);
             if (ret > 0)

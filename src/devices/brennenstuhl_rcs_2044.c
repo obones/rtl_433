@@ -23,8 +23,8 @@ https://github.com/xkonni/raspberry-remote
 
 static int brennenstuhl_rcs_2044_process_row(r_device *decoder, bitbuffer_t *bitbuffer, int row)
 {
-    uint8_t const *b = bitbuffer->bb[row];
-    int const length = bitbuffer->bits_per_row[row];
+    uint8_t const *b = bitbuffer_bb(bitbuffer)[row];
+    int const length = bitbuffer_bits_per_row(bitbuffer)[row];
     data_t *data;
 
     /* Test bit pattern for every second bit being 1 */
@@ -103,7 +103,7 @@ static int brennenstuhl_rcs_2044_process_row(r_device *decoder, bitbuffer_t *bit
 static int brennenstuhl_rcs_2044_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     int counter = 0;
-    for (int row = 0; row < bitbuffer->num_rows; row++)
+    for (int row = 0; row < bitbuffer_num_rows(bitbuffer); row++)
         counter += brennenstuhl_rcs_2044_process_row(decoder, bitbuffer, row);
     return counter;
 }

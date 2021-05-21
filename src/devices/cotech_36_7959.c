@@ -51,18 +51,18 @@ static int cotech_36_7959_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t b[14]; // 112 bits are 14 bytes
     data_t *data;
 
-    if (bitbuffer->num_rows > 2) {
+    if (bitbuffer_num_rows(bitbuffer) > 2) {
         return DECODE_ABORT_EARLY;
     }
-    if (bitbuffer->bits_per_row[0] < 112 && bitbuffer->bits_per_row[1] < 112) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 112 && bitbuffer_bits_per_row(bitbuffer)[1] < 112) {
         return DECODE_ABORT_EARLY;
     }
 
-    for (int i = 0; i < bitbuffer->num_rows; ++i) {
+    for (int i = 0; i < bitbuffer_num_rows(bitbuffer); ++i) {
         unsigned pos = bitbuffer_search(bitbuffer, i, 0, preamble, 12);
         pos += 12;
 
-        if (pos + 112 > bitbuffer->bits_per_row[i])
+        if (pos + 112 > bitbuffer_bits_per_row(bitbuffer)[i])
             continue; // too short or not found
 
         r = i;

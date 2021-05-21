@@ -107,8 +107,8 @@ static int new_template_decode(r_device *decoder, bitbuffer_t *bitbuffer)
      * loop over all rows and collect or output data:
      */
 
-    for (r = 0; r < bitbuffer->num_rows; ++r) {
-        b = bitbuffer->bb[r];
+    for (r = 0; r < bitbuffer_num_rows(bitbuffer); ++r) {
+        b = bitbuffer_bb(bitbuffer)[r];
 
         /*
          * Validate message and reject invalid messages as
@@ -121,7 +121,7 @@ static int new_template_decode(r_device *decoder, bitbuffer_t *bitbuffer)
          * - Data integrity checks (CRC/Checksum/Parity)
          */
 
-        if (bitbuffer->bits_per_row[r] < MYDEVICE_BITLEN) {
+        if (bitbuffer_bits_per_row(bitbuffer)[r] < MYDEVICE_BITLEN) {
             continue;
         }
 
@@ -136,11 +136,11 @@ static int new_template_decode(r_device *decoder, bitbuffer_t *bitbuffer)
      */
 
     r = bitbuffer_find_repeated_row(bitbuffer, MYDEVICE_MINREPEATS, MYDEVICE_BITLEN);
-    if (r < 0 || bitbuffer->bits_per_row[r] > MYDEVICE_BITLEN + 16) {
+    if (r < 0 || bitbuffer_bits_per_row(bitbuffer)[r] > MYDEVICE_BITLEN + 16) {
         return 0;
     }
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
 
     /*
      * Either reject rows that don't start with the correct start byte:

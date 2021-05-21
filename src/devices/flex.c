@@ -96,7 +96,7 @@ struct flex_params {
     unsigned decode_uart;
 };
 
-static void print_row_bytes(char *row_bytes, uint8_t *bits, int num_bits)
+static void print_row_bytes(char *row_bytes, uint8_t const *bits, int num_bits)
 {
     row_bytes[0] = '\0';
     // print byte-wide
@@ -153,13 +153,13 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     struct flex_params *params = decoder->decode_ctx;
 
     // discard short / unwanted bitbuffers
-    if ((bitbuffer->num_rows < params->min_rows)
-            || (params->max_rows && bitbuffer->num_rows > params->max_rows))
+    if ((bitbuffer_num_rows(bitbuffer) < params->min_rows)
+            || (params->max_rows && bitbuffer_num_rows(bitbuffer) > params->max_rows))
         return DECODE_ABORT_LENGTH;
 
-    for (i = 0; i < bitbuffer->num_rows; i++) {
-        if ((bitbuffer->bits_per_row[i] >= params->min_bits)
-                && (!params->max_bits || bitbuffer->bits_per_row[i] <= params->max_bits))
+    for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
+        if ((bitbuffer_bits_per_row(bitbuffer)[i] >= params->min_bits)
+                && (!params->max_bits || bitbuffer_bits_per_row(bitbuffer)[i] <= params->max_bits))
             match_count++;
     }
     if (!match_count)
@@ -178,9 +178,9 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     if (params->reflect) {
         // TODO: refactor to utils
-        for (i = 0; i < bitbuffer->num_rows; ++i) {
-            for (j = 0; j < (bitbuffer->bits_per_row[i] + 7) / 8; ++j) {
-                bitbuffer->bb[i][j] = reverse8(bitbuffer->bb[i][j]);
+        for (i = 0; i < bitbuffer_num_rows(bitbuffer); ++i) {
+            for (j = 0; j < (bitbuffer_bits_per_row(bitbuffer)[i] + 7) / 8; ++j) {
+                bitbuffer_set_bb(bitbuffer, i, j, reverse8(bitbuffer_bb(bitbuffer)[i][j]));
             }
         }
     }
@@ -189,8 +189,8 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (params->match_len) {
         r = -1;
         match_count = 0;
-        for (i = 0; i < bitbuffer->num_rows; i++) {
-            if (bitbuffer_search(bitbuffer, i, 0, params->match_bits, params->match_len) < bitbuffer->bits_per_row[i]) {
+        for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
+            if (bitbuffer_search(bitbuffer, i, 0, params->match_bits, params->match_len) < bitbuffer_bits_per_row(bitbuffer)[i]) {
                 if (r < 0)
                     r = i;
                 match_count++;
@@ -204,18 +204,18 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (params->preamble_len) {
         r = -1;
         match_count = 0;
-        for (i = 0; i < bitbuffer->num_rows; i++) {
+        for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
             unsigned pos = bitbuffer_search(bitbuffer, i, 0, params->preamble_bits, params->preamble_len);
-            if (pos < bitbuffer->bits_per_row[i]) {
+            if (pos < bitbuffer_bits_per_row(bitbuffer)[i]) {
                 if (r < 0)
                     r = i;
                 match_count++;
                 pos += params->preamble_len;
                 // TODO: refactor to bitbuffer_shift_row()
-                unsigned len = bitbuffer->bits_per_row[i] - pos;
+                unsigned len = bitbuffer_bits_per_row(bitbuffer)[i] - pos;
                 bitbuffer_extract_bytes(bitbuffer, i, pos, tmp, len);
-                memcpy(bitbuffer->bb[i], tmp, (len + 7) / 8);
-                bitbuffer->bits_per_row[i] = len;
+                memcpy(bitbuffer_bb(bitbuffer)[i], tmp, (len + 7) / 8);
+                bitbuffer_set_bits_per_row(bitbuffer, i, len);
             }
         }
         if (!match_count)
@@ -223,10 +223,10 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     if (params->decode_uart) {
-        for (i = 0; i < bitbuffer->num_rows; i++) {
-            int len = extract_bytes_uart(bitbuffer->bb[i], 0, bitbuffer->bits_per_row[i], tmp);
-            memcpy(bitbuffer->bb[i], tmp, len);
-            bitbuffer->bits_per_row[i] = len * 8;
+        for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
+            int len = extract_bytes_uart(bitbuffer_bb(bitbuffer)[i], 0, bitbuffer_bits_per_row(bitbuffer)[i], tmp);
+            memcpy(bitbuffer_bb(bitbuffer)[i], tmp, len);
+            bitbuffer_set_bits_per_row(bitbuffer, i, len * 8);
         }
     }
 
@@ -237,20 +237,20 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // discard duplicates
     if (params->unique) {
-        print_row_bytes(row_bytes, bitbuffer->bb[r], bitbuffer->bits_per_row[r]);
+        print_row_bytes(row_bytes, bitbuffer_bb(bitbuffer)[r], bitbuffer_bits_per_row(bitbuffer)[r]);
 
         /* clang-format off */
         data = data_make(
                 "model", "", DATA_STRING, params->name,
                 "count", "", DATA_INT, match_count,
-                "num_rows", "", DATA_INT, bitbuffer->num_rows,
-                "len", "", DATA_INT, bitbuffer->bits_per_row[r],
+                "num_rows", "", DATA_INT, bitbuffer_num_rows(bitbuffer),
+                "len", "", DATA_INT, bitbuffer_bits_per_row(bitbuffer)[r],
                 "data", "", DATA_STRING, row_bytes,
                 NULL);
         /* clang-format on */
 
         // add a data line for each getter
-        render_getters(data, bitbuffer->bb[r], params);
+        render_getters(data, bitbuffer_bb(bitbuffer)[r], params);
 
         decoder_output_data(decoder, data);
         return 1;
@@ -268,38 +268,38 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return 1;
     }
 
-    for (i = 0; i < bitbuffer->num_rows; i++) {
-        print_row_bytes(row_bytes, bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
+    for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
+        print_row_bytes(row_bytes, bitbuffer_bb(bitbuffer)[i], bitbuffer_bits_per_row(bitbuffer)[i]);
 
         /* clang-format off */
         row_data[i] = data_make(
-                "len", "", DATA_INT, bitbuffer->bits_per_row[i],
+                "len", "", DATA_INT, bitbuffer_bits_per_row(bitbuffer)[i],
                 "data", "", DATA_STRING, row_bytes,
                 NULL);
         /* clang-format on */
 
         // add a data line for each getter
-        render_getters(row_data[i], bitbuffer->bb[i], params);
+        render_getters(row_data[i], bitbuffer_bb(bitbuffer)[i], params);
 
         // a simpler representation for csv output
-        row_codes[i] = malloc(8 + bitbuffer->bits_per_row[i] / 4 + 1); // "{nnnn}..\0"
+        row_codes[i] = malloc(8 + bitbuffer_bits_per_row(bitbuffer)[i] / 4 + 1); // "{nnnn}..\0"
         if (!row_codes[i])
             WARN_MALLOC("flex_decode()");
         else // NOTE: skipped on alloc failure.
-            sprintf(row_codes[i], "{%d}%s", bitbuffer->bits_per_row[i], row_bytes);
+            sprintf(row_codes[i], "{%d}%s", bitbuffer_bits_per_row(bitbuffer)[i], row_bytes);
     }
     /* clang-format off */
     data = data_make(
             "model", "", DATA_STRING, params->name,
             "count", "", DATA_INT, match_count,
-            "num_rows", "", DATA_INT, bitbuffer->num_rows,
-            "rows", "", DATA_ARRAY, data_array(bitbuffer->num_rows, DATA_DATA, row_data),
-            "codes", "", DATA_ARRAY, data_array(bitbuffer->num_rows, DATA_STRING, row_codes),
+            "num_rows", "", DATA_INT, bitbuffer_num_rows(bitbuffer),
+            "rows", "", DATA_ARRAY, data_array(bitbuffer_num_rows(bitbuffer), DATA_DATA, row_data),
+            "codes", "", DATA_ARRAY, data_array(bitbuffer_num_rows(bitbuffer), DATA_STRING, row_codes),
             NULL);
     /* clang-format on */
 
     decoder_output_data(decoder, data);
-    for (i = 0; i < bitbuffer->num_rows; i++) {
+    for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
         free(row_codes[i]);
     }
 
@@ -412,14 +412,16 @@ static unsigned parse_modulation(char const *str)
 
 static unsigned parse_bits(const char *code, bitrow_t bitrow)
 {
-    bitbuffer_t bits = {0};
-    bitbuffer_parse(&bits, code);
-    if (bits.num_rows != 1) {
-        fprintf(stderr, "Bad flex spec, \"match\" needs exactly one bit row (%d found)!\n", bits.num_rows);
+    bitbuffer_t* bits = bitbuffer_alloc();
+    bitbuffer_parse(bits, code);
+    if (bitbuffer_num_rows(bits) != 1) {
+        fprintf(stderr, "Bad flex spec, \"match\" needs exactly one bit row (%d found)!\n", bitbuffer_num_rows(bits));
         usage();
     }
-    memcpy(bitrow, bits.bb[0], sizeof(bitrow_t));
-    return bits.bits_per_row[0];
+    memcpy(bitrow, bitbuffer_bb(bits)[0], sizeof(bitrow_t));
+    uint16_t result = bitbuffer_bits_per_row(bits)[0];
+    bitbuffer_free(bits);
+    return result;
 }
 
 const char *parse_map(const char *arg, struct flex_get *getter)

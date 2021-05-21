@@ -39,7 +39,7 @@ static int abmt_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     int row;
     float temp_c;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits;
     unsigned int id;
     data_t *data;
     unsigned bitpos = 0;
@@ -52,23 +52,26 @@ static int abmt_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[row] > 120)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] > 120)
         return DECODE_ABORT_LENGTH;
 
     // search for 24 bit sync pattern
     bitpos = bitbuffer_search(bitbuffer, row, bitpos, sync_pattern, 24);
     // if sync is not found or sync is found with to little bits available, abort
-    if ((bitpos == bitbuffer->bits_per_row[row]) || (bitpos < SYNC_PATTERN_START_OFF))
+    if ((bitpos == bitbuffer_bits_per_row(bitbuffer)[row]) || (bitpos < SYNC_PATTERN_START_OFF))
         return DECODE_FAIL_SANITY;
 
     // sync bitstream
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos-SYNC_PATTERN_START_OFF, &packet_bits, 48);
-    bitbuffer_invert(&packet_bits);
+    packet_bits = bitbuffer_alloc();
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos-SYNC_PATTERN_START_OFF, packet_bits, 48);
+    bitbuffer_invert(packet_bits);
 
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
     id = b[0];
     temp = bcd2int(b[3])*10 + bcd2int(b[4]>>4);
     temp_c = (float)temp;
+
+    bitbuffer_free(packet_bits);
 
     /* clang-format off */
      data = data_make(

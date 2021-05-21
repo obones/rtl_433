@@ -69,7 +69,7 @@ static int auriol_afw2a1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY; // no repeated row found
     }
 
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     id          = b[0];
     battery_ok  = b[1] >> 7;

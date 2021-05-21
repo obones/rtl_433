@@ -77,13 +77,13 @@ static int fs20_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint32_t hc_b4 = 0;
 
     // check length of frame
-    if (bitbuffer->bits_per_row[0] != 58) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 58) {
         // check extended length (never tested!)
-        if (bitbuffer->bits_per_row[0] != 67)
+        if (bitbuffer_bits_per_row(bitbuffer)[0] != 67)
             return DECODE_ABORT_LENGTH;
     }
 
-    b = bitbuffer->bb[0];
+    b = bitbuffer_bb(bitbuffer)[0];
     // check preamble first 13 bits '0000 0000 0000 1'
     if ((b[0] != 0x00) || ((b[1] & 0xf8) != 0x08))
         return DECODE_FAIL_SANITY;

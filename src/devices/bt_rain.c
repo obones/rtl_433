@@ -43,10 +43,10 @@ static int bt_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[row] != NUM_BITS && bitbuffer->bits_per_row[row] != NUM_BITS + 1)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] != NUM_BITS && bitbuffer_bits_per_row(bitbuffer)[row] != NUM_BITS + 1)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     if (b[0] == 0xff && b[1] == 0xff && b[2] == 0xff && b[3] == 0xff)
         return DECODE_FAIL_SANITY; // prevent false positive checksum

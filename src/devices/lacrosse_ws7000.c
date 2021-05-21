@@ -52,11 +52,11 @@ static int lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t b[14] = {0}; // LaCrosse WS7000-20 meteo sensor: 14 nibbles
 
     unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0, preamble_pattern, 8) + 8;
-    if (start_pos >= bitbuffer->bits_per_row[0])
+    if (start_pos >= bitbuffer_bits_per_row(bitbuffer)[0])
         return DECODE_ABORT_EARLY;
 
-    unsigned max_bits = MIN(14 * 5, bitbuffer->bits_per_row[0] - start_pos);
-    unsigned len      = extract_nibbles_4b1s(bitbuffer->bb[0], start_pos, max_bits, b);
+    unsigned max_bits = MIN(14 * 5, bitbuffer_bits_per_row(bitbuffer)[0] - start_pos);
+    unsigned len      = extract_nibbles_4b1s(bitbuffer_bb(bitbuffer)[0], start_pos, max_bits, b);
     if (len < 7) // at least type, addr, 3 data, xor, add nibbles needed
         return DECODE_ABORT_LENGTH;
 

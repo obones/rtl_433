@@ -93,17 +93,17 @@ static int gt_wt_03_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t *b;
 
     // nominal 1 row or 23 rows, require more than half to match
-    if (bitbuffer->num_rows > 1)
-        row = bitbuffer_find_repeated_row(bitbuffer, bitbuffer->num_rows / 2 + 1, 41);
+    if (bitbuffer_num_rows(bitbuffer) > 1)
+        row = bitbuffer_find_repeated_row(bitbuffer, bitbuffer_num_rows(bitbuffer) / 2 + 1, 41);
 
     if (row < 0)
         return DECODE_ABORT_LENGTH;
 
-    if (41 != bitbuffer->bits_per_row[row])
+    if (41 != bitbuffer_bits_per_row(bitbuffer)[row])
         return DECODE_ABORT_LENGTH;
 
     bitbuffer_invert(bitbuffer);
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     if (!(b[0] || b[1] || b[2] || b[3] || b[4])) /* exclude all zeros */
         return DECODE_ABORT_EARLY;

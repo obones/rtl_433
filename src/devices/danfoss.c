@@ -83,7 +83,7 @@ static int danfoss_cfr_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
 
     // Validate package
-    unsigned bits = bitbuffer->bits_per_row[0];
+    unsigned bits = bitbuffer_bits_per_row(bitbuffer)[0];
     if (bits >= 246 && bits <= 260) {   // Normal size is 255, but allow for some noise in preamble
         // Find a package
         unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 112, HEADER, sizeof(HEADER)*8);    // Normal index is 128, skip first 14 bytes to find faster
@@ -98,8 +98,8 @@ static int danfoss_cfr_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
         // Decode input 6 bit nibbles to output 4 bit nibbles (packed in bytes)
         for (unsigned n=0; n<NUM_BYTES; ++n) {
-            uint8_t nibble_h = danfoss_decode_nibble(bitrow_get_byte(bitbuffer->bb[0], n*12+bit_offset) >> 2);
-            uint8_t nibble_l = danfoss_decode_nibble(bitrow_get_byte(bitbuffer->bb[0], n*12+bit_offset+6) >> 2);
+            uint8_t nibble_h = danfoss_decode_nibble(bitrow_get_byte(bitbuffer_bb(bitbuffer)[0], n*12+bit_offset) >> 2);
+            uint8_t nibble_l = danfoss_decode_nibble(bitrow_get_byte(bitbuffer_bb(bitbuffer)[0], n*12+bit_offset+6) >> 2);
             if (nibble_h > 0xF || nibble_l > 0xF) {
                 if (decoder->verbose) {
                     fprintf(stderr, "Danfoss: 6b/4b decoding error\n");

@@ -57,25 +57,25 @@ static int smoke_gs558_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int id;
     char code_str[7];
 
-    if (bitbuffer->num_rows < 3)
+    if (bitbuffer_num_rows(bitbuffer) < 3)
         return DECODE_ABORT_EARLY; // truncated transmission
 
     bitbuffer_invert(bitbuffer);
 
-    for (r = 0; r < bitbuffer->num_rows; ++r) {
-        b = bitbuffer->bb[r];
+    for (r = 0; r < bitbuffer_num_rows(bitbuffer); ++r) {
+        b = bitbuffer_bb(bitbuffer)[r];
 
         // count learn pattern and strip
-        if (bitbuffer->bits_per_row[r] >= 24
+        if (bitbuffer_bits_per_row(bitbuffer)[r] >= 24
                 && b[0] == 0x55 && b[1] == 0x55 && b[2] == 0x55) {
             ++learn;
-            bitbuffer->bits_per_row[r] = 0;
+            bitbuffer_set_bits_per_row(bitbuffer, r, 0);
         }
 
         // strip end-of-packet pulse
-        if ((bitbuffer->bits_per_row[r] == 26 || bitbuffer->bits_per_row[r] == 27)
+        if ((bitbuffer_bits_per_row(bitbuffer)[r] == 26 || bitbuffer_bits_per_row(bitbuffer)[r] == 27)
                 && b[3] == 0)
-            bitbuffer->bits_per_row[r] = 24;
+            bitbuffer_set_bits_per_row(bitbuffer, r, 24);
     }
 
     r = bitbuffer_find_repeated_row(bitbuffer, 3, 24);
@@ -83,10 +83,10 @@ static int smoke_gs558_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (r < 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[r] > 4*8)
+    if (bitbuffer_bits_per_row(bitbuffer)[r] > 4*8)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
 
     // if ((b[2] & 0x0f) != 0x03)
     //     return DECODE_ABORT_EARLY; // last nibble is always 0x3?

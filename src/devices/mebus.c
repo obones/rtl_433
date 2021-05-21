@@ -11,7 +11,7 @@
 
 static int mebus433_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     int16_t temp;
     int8_t  hum;
     uint8_t address;

@@ -101,7 +101,7 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned data_start = 0;
     uint8_t const *preamble_pattern;
     unsigned preamble_pattern_bit_length = 0;
-    bitbuffer_t decoded = { 0 };
+    bitbuffer_t* decoded;
     uint8_t *b;
     int chksum_calc;
     int chksum;
@@ -110,15 +110,15 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int control;
     int seed;
 
-    for (int i = 0; i < bitbuffer->num_rows; i++) {
-        if (bitbuffer->bits_per_row[i] > 170) {
+    for (int i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
+        if (bitbuffer_bits_per_row(bitbuffer)[i] > 170) {
             is_retransmission = 1;
             decode_row = i;
             data_start = 65;
             preamble_pattern = (uint8_t const *) "\xf0\xf0\xf0\xf0\xf0\xf0\xf0\xff";
             preamble_pattern_bit_length = 64;
             break;
-        } else if (bitbuffer->bits_per_row[i] > 130) {
+        } else if (bitbuffer_bits_per_row(bitbuffer)[i] > 130) {
             is_retransmission = 0;
             decode_row = i;
             data_start = 25;
@@ -134,10 +134,13 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (bitbuffer_search(bitbuffer, decode_row, 0, preamble_pattern, preamble_pattern_bit_length) != 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer_manchester_decode(bitbuffer, decode_row, data_start, &decoded, 56) - data_start < 56)
+    decoded = bitbuffer_alloc();
+    if (bitbuffer_manchester_decode(bitbuffer, decode_row, data_start, decoded, 56) - data_start < 56) {
+        bitbuffer_free(decoded);
         return DECODE_ABORT_EARLY;
+    }
 
-    b = decoded.bb[0];
+    b = bitbuffer_bb(decoded)[0];
 
     // descramble
     for (int i = 6; i > 0; i--)
@@ -146,8 +149,10 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // calculate and verify checksum
     chksum_calc = xor_bytes(b, 7);
     chksum_calc = (chksum_calc & 0xf) ^ (chksum_calc >> 4); // fold to nibble
-    if (chksum_calc != 0)
+    if (chksum_calc != 0) {
+        bitbuffer_free(decoded);
         return DECODE_FAIL_MIC;
+    }
 
     seed    = b[0];
     control = (b[1] & 0xf0) >> 4;
@@ -155,6 +160,8 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     counter = (b[2] << 8) | b[3];
     // assume little endian as multiple addresses used by one remote control increase the address value in little endian byte order.
     address = (b[6] << 16) | (b[5] << 8) | b[4];
+
+    bitbuffer_free(decoded);
 
     // lookup control
     char const *control_str = control_strs[control];

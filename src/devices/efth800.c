@@ -50,10 +50,10 @@ static int eurochron_efth800_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (row < 0) // repeated rows?
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[row] > 49) // 48 bits per row?
+    if (bitbuffer_bits_per_row(bitbuffer)[row] > 49) // 48 bits per row?
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     // This is actially a 0x00 packet error ( bitbuffer_invert )
     // No need to decode/extract values for simple test

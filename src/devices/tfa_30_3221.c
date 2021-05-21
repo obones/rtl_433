@@ -42,16 +42,16 @@ static int tfa_303221_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned int device;
 
     // Device send 4 row, checking for two repeated
-    row = bitbuffer_find_repeated_row(bitbuffer, (bitbuffer->num_rows > 4) ? 4 : 2, 40);
+    row = bitbuffer_find_repeated_row(bitbuffer, (bitbuffer_num_rows(bitbuffer) > 4) ? 4 : 2, 40);
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
     // Checking for right number of bits per row
-    if (bitbuffer->bits_per_row[row] > 41)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] > 41)
         return DECODE_ABORT_LENGTH;
 
     bitbuffer_invert(bitbuffer);
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     device      = b[0];
 

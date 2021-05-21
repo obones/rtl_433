@@ -132,13 +132,13 @@ static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer,
     float temperature;
     uint8_t const fsk_preamble[] = {0xAA, 0x2D, 0xD4};
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer_num_rows(bitbuffer) != 1) {
         return DECODE_ABORT_EARLY;
     }
 
     if (type == TYPE_FSK) {
         int bit_offset = bitbuffer_search(bitbuffer, 0, 0, fsk_preamble, sizeof(fsk_preamble) * 8) + sizeof(fsk_preamble) * 8;
-        if (bit_offset + sizeof(bbuf) * 8 > bitbuffer->bits_per_row[0]) {  // Did not find a big enough package
+        if (bit_offset + sizeof(bbuf) * 8 > bitbuffer_bits_per_row(bitbuffer)[0]) {  // Did not find a big enough package
             if (decoder->verbose)
                 bitbuffer_printf(bitbuffer, "fineoffset_wh1080: short package. Header index: %u\n", bit_offset);
             return DECODE_ABORT_LENGTH;
@@ -147,31 +147,31 @@ static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer,
         br = bbuf;
         br[0] = 0xFF; // Emulate OOK payload
         preamble = EPB;
-    } else if (bitbuffer->bits_per_row[0] == 88) { // FineOffset WH1080/3080 Weather data msg
+    } else if (bitbuffer_bits_per_row(bitbuffer)[0] == 88) { // FineOffset WH1080/3080 Weather data msg
         preamble = EPB;
         sens_msg = 10;
-        br = bitbuffer->bb[0];
+        br = bitbuffer_bb(bitbuffer)[0];
     }
-    else if (bitbuffer->bits_per_row[0] == 87) { // FineOffset WH1080/3080 Weather data msg (different version (newest?))
+    else if (bitbuffer_bits_per_row(bitbuffer)[0] == 87) { // FineOffset WH1080/3080 Weather data msg (different version (newest?))
         preamble = SPB;
         sens_msg = 10;
         /* 7 bits of preamble, bit shift the whole buffer and fix the bytestream */
         bitbuffer_extract_bytes(bitbuffer, 0, 7, bbuf + 1, 10 * 8);
-        bbuf[0] = (bitbuffer->bb[0][0] >> 1) | 0x80;
+        bbuf[0] = (bitbuffer_bb(bitbuffer)[0][0] >> 1) | 0x80;
         br      = bbuf;
     }
-    else if (bitbuffer->bits_per_row[0] == 64) {  // FineOffset WH3080 UV/Light data msg
+    else if (bitbuffer_bits_per_row(bitbuffer)[0] == 64) {  // FineOffset WH3080 UV/Light data msg
         preamble = EPB;
         sens_msg = 7;
-        br = bitbuffer->bb[0];
+        br = bitbuffer_bb(bitbuffer)[0];
 
     }
-    else if (bitbuffer->bits_per_row[0] == 63) { // FineOffset WH3080 UV/Light data msg (different version (newest?))
+    else if (bitbuffer_bits_per_row(bitbuffer)[0] == 63) { // FineOffset WH3080 UV/Light data msg (different version (newest?))
         preamble = SPB;
         sens_msg = 7;
         /* 7 bits of preamble, bit shift the whole buffer and fix the bytestream */
         bitbuffer_extract_bytes(bitbuffer, 0, 7, bbuf + 1, 7 * 8);
-        bbuf[0] = (bitbuffer->bb[0][0] >> 1) | 0x80;
+        bbuf[0] = (bitbuffer_bb(bitbuffer)[0][0] >> 1) | 0x80;
         br      = bbuf;
     }
     else {

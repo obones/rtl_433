@@ -60,7 +60,7 @@ static int fineoffset_wh1050_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data;
     uint8_t br[9];
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer_num_rows(bitbuffer) != 1) {
         return DECODE_ABORT_EARLY;
     }
 
@@ -74,8 +74,8 @@ static int fineoffset_wh1050_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
        In both cases, we extract the 72 bits after the preamble.
     */
-    unsigned bits = bitbuffer->bits_per_row[0];
-    uint8_t preamble_byte = bitbuffer->bb[0][0];
+    unsigned bits = bitbuffer_bits_per_row(bitbuffer)[0];
+    uint8_t preamble_byte = bitbuffer_bb(bitbuffer)[0][0];
     if (bits == 79 && preamble_byte == 0xfe) {
         bitbuffer_extract_bytes(bitbuffer, 0, 7, br, 72);
     } else if (bits == 80 && preamble_byte == 0xff) {

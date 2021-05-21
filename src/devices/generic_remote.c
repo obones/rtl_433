@@ -22,7 +22,7 @@ Tested devices:
 static int generic_remote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     uint8_t *b = bb[0];
     char tristate[23];
     char *p = tristate;
@@ -32,7 +32,7 @@ static int generic_remote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     b[1] = ~b[1];
     b[2] = ~b[2];
 
-    unsigned bits = bitbuffer->bits_per_row[0];
+    unsigned bits = bitbuffer_bits_per_row(bitbuffer)[0];
 
     // Validate package
     if ((bits != 25)

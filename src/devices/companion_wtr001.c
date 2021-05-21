@@ -55,7 +55,7 @@ static int companion_wtr001_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     float temperature;
 
     r = bitbuffer_find_repeated_row(bitbuffer, MYDEVICE_MINREPEATS, MYDEVICE_BITLEN);
-    if (r < 0 || bitbuffer->bits_per_row[r] != 14) {
+    if (r < 0 || bitbuffer_bits_per_row(bitbuffer)[r] != 14) {
         return DECODE_ABORT_LENGTH;
     }
 

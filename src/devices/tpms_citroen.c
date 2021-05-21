@@ -32,7 +32,7 @@ Packet nibbles:
 static int tpms_citroen_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t *b;
     int state;
     char state_str[3];
@@ -45,21 +45,24 @@ static int tpms_citroen_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     int maybe_battery;
     int crc;
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 88);
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, packet_bits, 88);
 
-    // fprintf(stderr, "%s : bits %d\n", __func__, packet_bits.bits_per_row[0]);
-    if ( packet_bits.bits_per_row[0] < 80) {
+    // fprintf(stderr, "%s : bits %d\n", __func__, bitbuffer_bits_per_row(packet_bits)[0]);
+    if ( bitbuffer_bits_per_row(packet_bits)[0] < 80) {
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_SANITY; // sanity check failed
     }
 
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
 
     if (b[6] == 0 || b[7] == 0) {
+        bitbuffer_free(packet_bits);
         return DECODE_ABORT_EARLY; // sanity check failed
     }
 
     crc = b[1]^b[2]^b[3]^b[4]^b[5]^b[6]^b[7]^b[8]^b[9];
     if (crc != 0) {
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_MIC; // bad checksum
     }
 
@@ -72,6 +75,8 @@ static int tpms_citroen_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     pressure = b[6];
     temperature = b[7];
     maybe_battery = b[8];
+
+    bitbuffer_free(packet_bits);
 
     /* clang-format off */
     data = data_make(
@@ -107,7 +112,7 @@ static int tpms_citroen_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 16)) + 178 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
         ret = tpms_citroen_decode(decoder, bitbuffer, 0, bitpos + 16);
         if (ret > 0)
             events += ret;

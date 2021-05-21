@@ -53,7 +53,7 @@ static uint8_t symbol_6to4(uint8_t symbol)
 
 static int radiohead_ask_extract(r_device *decoder, bitbuffer_t *bitbuffer, uint8_t row, /*OUT*/ uint8_t *payload)
 {
-    int len = bitbuffer->bits_per_row[row];
+    int len = bitbuffer_bits_per_row(bitbuffer)[row];
     int msg_len = RH_ASK_MAX_MESSAGE_LEN;
     int pos, nb_bytes;
     uint8_t rxBits[2] = {0};

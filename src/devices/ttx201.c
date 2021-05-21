@@ -98,7 +98,7 @@ static int
 ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     uint8_t b[MSG_PACKET_LEN];
-    int bits = bitbuffer->bits_per_row[row];
+    int bits = bitbuffer_bits_per_row(bitbuffer)[row];
     int checksum;
     int checksum_calculated;
     int postmark;
@@ -116,7 +116,7 @@ ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned 
                     fprintf(stderr, "Short preamble: %d bits (expected %d)\n",
                             bits, MSG_PREAMBLE_BITS);
                 }
-            } else if (row != (unsigned)bitbuffer->num_rows - 1 && bits == 1) {
+            } else if (row != (unsigned)bitbuffer_num_rows(bitbuffer) - 1 && bits == 1) {
                 fprintf(stderr, "Wrong packet #%u length: %d bits (expected %d)\n",
                         row, bits, MSG_PACKET_BITS);
             }
@@ -196,8 +196,8 @@ ttx201_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int ret    = 0;
     int events = 0;
 
-    if (MSG_MIN_ROWS <= bitbuffer->num_rows && bitbuffer->num_rows <= MSG_MAX_ROWS) {
-        for (row = 0; row < bitbuffer->num_rows; ++row) {
+    if (MSG_MIN_ROWS <= bitbuffer_num_rows(bitbuffer) && bitbuffer_num_rows(bitbuffer) <= MSG_MAX_ROWS) {
+        for (row = 0; row < bitbuffer_num_rows(bitbuffer); ++row) {
             ret = ttx201_decode(decoder, bitbuffer, row, 0);
             if (ret > 0)
                 events += ret;

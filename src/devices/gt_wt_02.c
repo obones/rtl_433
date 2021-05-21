@@ -46,14 +46,14 @@ A Lidl AURIO (from 12/2018) with PCB marking YJ-T12 V02 has two extra bits in fr
 static int gt_wt_02_process_row(r_device *decoder, bitbuffer_t *bitbuffer, int row)
 {
     data_t *data;
-    uint8_t *b = bitbuffer->bb[row];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[row];
     uint8_t shifted[5];
 
-    if (39 == bitbuffer->bits_per_row[row]) {
+    if (39 == bitbuffer_bits_per_row(bitbuffer)[row]) {
         bitbuffer_extract_bytes(bitbuffer, row, 2, shifted, 37);
         b = shifted;
     }
-    else if (37 != bitbuffer->bits_per_row[row])
+    else if (37 != bitbuffer_bits_per_row(bitbuffer)[row])
         return 0; // DECODE_ABORT_LENGTH
 
     if (!(b[0] || b[1] || b[2] || b[3] || b[4])) /* exclude all zeros */
@@ -109,7 +109,7 @@ static int gt_wt_02_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     int counter = 0;
     // iterate through all rows, return on first successful
-    for (int row = 0; row < bitbuffer->num_rows && !counter; ++row)
+    for (int row = 0; row < bitbuffer_num_rows(bitbuffer) && !counter; ++row)
         counter += gt_wt_02_process_row(decoder, bitbuffer, row);
     return counter;
 }

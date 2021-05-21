@@ -31,14 +31,14 @@ static int fordremote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int device_id, code;
 
     // expect {1} {9} {1} preamble
-    for (int i = 3; i < bitbuffer->num_rows; i++) {
-        if (bitbuffer->bits_per_row[i] < 78) {
+    for (int i = 3; i < bitbuffer_num_rows(bitbuffer); i++) {
+        if (bitbuffer_bits_per_row(bitbuffer)[i] < 78) {
             continue; // DECODE_ABORT_LENGTH
         }
 
         // Validate preamble
-        if (bitbuffer->bits_per_row[i - 3] != 1 || bitbuffer->bits_per_row[i - 1] != 1
-                || bitbuffer->bits_per_row[i - 2] != 9 || bitbuffer->bb[i - 2][0] != 0) {
+        if (bitbuffer_bits_per_row(bitbuffer)[i - 3] != 1 || bitbuffer_bits_per_row(bitbuffer)[i - 1] != 1
+                || bitbuffer_bits_per_row(bitbuffer)[i - 2] != 9 || bitbuffer_bb(bitbuffer)[i - 2][0] != 0) {
             continue; // DECODE_ABORT_EARLY
         }
 
@@ -46,7 +46,7 @@ static int fordremote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             bitbuffer_print(bitbuffer);
         }
 
-        bytes = bitbuffer->bb[i];
+        bytes = bitbuffer_bb(bitbuffer)[i];
         device_id = (bytes[0]<<16) | (bytes[1]<<8) | bytes[2];
         code = bytes[7];
 

@@ -46,11 +46,11 @@ static int bresser_3ch_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     float temp_f;
 
     int r = bitbuffer_find_repeated_row(bitbuffer, 3, 40);
-    if (r < 0 || bitbuffer->bits_per_row[r] > 42) {
+    if (r < 0 || bitbuffer_bits_per_row(bitbuffer)[r] > 42) {
         return DECODE_ABORT_LENGTH;
     }
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
     b[0] = ~b[0];
     b[1] = ~b[1];
     b[2] = ~b[2];

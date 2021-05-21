@@ -40,10 +40,10 @@ static int steelmate_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     //  bitbuffer_printf(bitbuffer, "Steelmate TPMS decoder: ");
     //}
 
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
 
     //Loop through each row of data
-    for (int i = 0; i < bitbuffer->num_rows; i++)
+    for (int i = 0; i < bitbuffer_num_rows(bitbuffer); i++)
     {
         //Payload is inverted Manchester encoded, and reversed MSB/LSB order
         uint8_t preAmble, ID1, ID2, p1, tempFahrenheit, tmpbattery_mV, payload_checksum, calculated_checksum;
@@ -53,7 +53,7 @@ static int steelmate_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         data_t *data;
 
         //Length must be 72 bits to be considered a valid packet
-        if (bitbuffer->bits_per_row[i] != 72)
+        if (bitbuffer_bits_per_row(bitbuffer)[i] != 72)
             continue; // DECODE_ABORT_LENGTH
 
         //Valid preamble? (Note, the data is still wrong order at this point. Correct pre-amble: 0x00 0x00 0x01)

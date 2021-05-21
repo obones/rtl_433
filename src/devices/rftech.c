@@ -19,7 +19,7 @@ Ewig Industries Macao
 
 static int rftech_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     uint16_t sensor_id = 0;
     uint8_t button;
     uint8_t battery;
@@ -29,7 +29,7 @@ static int rftech_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     r = bitbuffer_find_repeated_row(bitbuffer, 3, 24);
 
-    if (r < 0 || bitbuffer->bits_per_row[r] != 24)
+    if (r < 0 || bitbuffer_bits_per_row(bitbuffer)[r] != 24)
         return DECODE_ABORT_LENGTH;
 
     /* Example of message:

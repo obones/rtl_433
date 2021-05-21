@@ -52,31 +52,35 @@ static int proove_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data;
 
     /* Reject missing sync */
-    if (bitbuffer->syncs_before_row[0] != 1)
+    if (bitbuffer_syncs_before_row(bitbuffer)[0] != 1)
         return DECODE_ABORT_EARLY;
 
     /* Reject codes of wrong length */
-    if (bitbuffer->bits_per_row[0] != 64)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 64)
         return DECODE_ABORT_LENGTH;
 
-    bitbuffer_t databits = {0};
+    bitbuffer_t* databits = bitbuffer_alloc();
     // note: not manchester encoded but actually ternary
-    bitbuffer_manchester_decode(bitbuffer, 0, 0, &databits, 80);
+    bitbuffer_manchester_decode(bitbuffer, 0, 0, databits, 80);
 
     /* Reject codes when Manchester decoding fails */
     /* 32 bits or 36 bits with dimmer value */
-    if (databits.bits_per_row[0] < 32)
+    if (bitbuffer_bits_per_row(databits)[0] < 32) {
+        bitbuffer_free(databits);
         return DECODE_ABORT_LENGTH;
+    }
 
-    bitbuffer_invert(&databits);
+    bitbuffer_invert(databits);
 
-    uint8_t *b = databits.bb[0];
+    uint8_t *b = bitbuffer_bb(databits)[0];
 
     uint32_t id        = (b[0] << 18) | (b[1] << 10) | (b[2] << 2) | (b[3] >> 6); // ID 26 bits
     uint32_t group_cmd = (b[3] >> 5) & 1;
     uint32_t on_bit    = (b[3] >> 4) & 1;
     uint32_t channel   = ((b[3] >> 2) & 0x03) ^ 0x03; // inverted
     uint32_t unit      = (b[3] & 0x03) ^ 0x03;        // inverted
+
+    bitbuffer_free(databits);
 
     /* clang-format off */
     data = data_make(

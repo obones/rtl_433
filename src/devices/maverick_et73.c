@@ -57,13 +57,13 @@ static int maverick_et73_sensor_callback(r_device *decoder, bitbuffer_t *bitbuff
         return DECODE_ABORT_EARLY;
     }
 
-    bytes = bitbuffer->bb[row];
+    bytes = bitbuffer_bb(bitbuffer)[row];
     if ( (!bytes[0] && !bytes[1] && !bytes[2] && !bytes[3])
     || (bytes[0] == 0xFF && bytes[1] == 0xFF && bytes[2] == 0xFF && bytes[3] == 0xFF))  {
         return DECODE_ABORT_EARLY; // reduce false positives
     }
 
-    if (bitbuffer->bits_per_row[row] != 48)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] != 48)
         return DECODE_ABORT_LENGTH;
 
     device = bytes[0];

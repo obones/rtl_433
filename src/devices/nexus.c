@@ -50,10 +50,10 @@ static int nexus_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (r < 0)
         return DECODE_ABORT_EARLY;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
 
     // we expect 36 bits but there might be a trailing 0 bit
-    if (bitbuffer->bits_per_row[r] > 37)
+    if (bitbuffer_bits_per_row(bitbuffer)[r] > 37)
         return DECODE_ABORT_LENGTH;
 
     if ((b[3] & 0xf0) != 0xf0)

@@ -38,13 +38,13 @@ static int oregon_scientific_v1_callback(r_device *decoder, bitbuffer_t *bitbuff
     // int uk2, uk3;
     data_t *data;
 
-    for (row = 0; row < bitbuffer->num_rows; row++) {
-        if (bitbuffer->bits_per_row[row] != OSV1_BITS)
+    for (row = 0; row < bitbuffer_num_rows(bitbuffer); row++) {
+        if (bitbuffer_bits_per_row(bitbuffer)[row] != OSV1_BITS)
             continue; // DECODE_ABORT_LENGTH
 
         cs = 0;
         for (i = 0; i < OSV1_BITS / 8; i++) {
-            uint8_t byte = reverse8(bitbuffer->bb[row][i]);
+            uint8_t byte = reverse8(bitbuffer_bb(bitbuffer)[row][i]);
             nibble[i * 2    ] = byte & 0x0f;
             nibble[i * 2 + 1] = byte >> 4;
             if (i < ((OSV1_BITS / 8) - 1))
@@ -53,8 +53,8 @@ static int oregon_scientific_v1_callback(r_device *decoder, bitbuffer_t *bitbuff
 
 
         // No need to decode/extract values for simple test
-        if ( bitbuffer->bb[row][0] == 0xFF && bitbuffer->bb[row][1] == 0xFF
-            && bitbuffer->bb[row][2] == 0xFF && bitbuffer->bb[row][3] == 0xFF )  {
+        if ( bitbuffer_bb(bitbuffer)[row][0] == 0xFF && bitbuffer_bb(bitbuffer)[row][1] == 0xFF
+            && bitbuffer_bb(bitbuffer)[row][2] == 0xFF && bitbuffer_bb(bitbuffer)[row][3] == 0xFF )  {
             if (decoder->verbose > 1) {
                 fprintf(stderr, "%s: DECODE_FAIL_SANITY data all 0xff\n", __func__);
             }

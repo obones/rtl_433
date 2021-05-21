@@ -32,22 +32,22 @@ static int scmplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned sync_index;
     const uint8_t scmplus_frame_sync[] = {0x16, 0xA3, 0x1E};
 
-    if (bitbuffer->bits_per_row[0] < 128) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 128) {
         return (DECODE_ABORT_LENGTH);
     }
 
     sync_index = bitbuffer_search(bitbuffer, 0, 0, scmplus_frame_sync, 24);
 
-    if (sync_index >= bitbuffer->bits_per_row[0]) {
+    if (sync_index >= bitbuffer_bits_per_row(bitbuffer)[0]) {
         return DECODE_ABORT_EARLY;
     }
 
-    if ( (bitbuffer->bits_per_row[0] - sync_index) < 128) {
+    if ( (bitbuffer_bits_per_row(bitbuffer)[0] - sync_index) < 128) {
         return DECODE_ABORT_LENGTH;
     }
 
     if (decoder->verbose) {
-        fprintf(stderr, "%s: row len=%hu\n", __func__, bitbuffer->bits_per_row[0]);
+        fprintf(stderr, "%s: row len=%hu\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         fprintf(stderr, "%s: sync_index=%u\n", __func__, sync_index);
     }
 

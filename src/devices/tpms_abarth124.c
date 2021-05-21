@@ -39,7 +39,7 @@ Data layout (nibbles):
 static int tpms_abarth124_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t *b;
     char id_str[4 * 2 + 1];
     char flags[1 * 2 + 1];
@@ -49,19 +49,21 @@ static int tpms_abarth124_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsi
     int checksum;
 
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 72);
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, packet_bits, 72);
 
     // make sure we decoded the expected number of bits
-    if (packet_bits.bits_per_row[0] < 72) {
+    if (bitbuffer_bits_per_row(packet_bits)[0] < 72) {
         // fprintf(stderr, "bitpos=%u start_pos=%u = %u\n", bitpos, start_pos, (start_pos - bitpos));
+        bitbuffer_free(packet_bits);
         return 0; // DECODE_FAIL_SANITY;
     }
 
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
 
     // check checksum (checksum8 xor)
     checksum = xor_bytes(b, 9);
     if (checksum != 0) {
+        bitbuffer_free(packet_bits);
         return 0; //DECODE_FAIL_MIC;
     }
 
@@ -71,6 +73,8 @@ static int tpms_abarth124_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsi
     status      = b[7];
     checksum    = b[8];
     sprintf(id_str, "%02x%02x%02x%02x", b[0], b[1], b[2], b[3]);
+
+    bitbuffer_free(packet_bits);
 
     /* clang-format off */
     data = data_make(
@@ -101,7 +105,7 @@ static int tpms_abarth124_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_invert(bitbuffer);
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 24)) + 80 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
         events += tpms_abarth124_decode(decoder, bitbuffer, 0, bitpos + 24);
         bitpos += 2;
     }

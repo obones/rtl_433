@@ -92,9 +92,9 @@ static int lacrosse_breezepro_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int raw_temp, humidity, raw_speed, direction;
     float temp_c, speed_kmh;
 
-    if (bitbuffer->bits_per_row[0] < 264) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 264) {
         if (decoder->verbose) {
-            fprintf(stderr, "%s: Wrong packet length: %d\n", __func__, bitbuffer->bits_per_row[0]);
+            fprintf(stderr, "%s: Wrong packet length: %d\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         }
         return DECODE_ABORT_LENGTH;
     }
@@ -102,7 +102,7 @@ static int lacrosse_breezepro_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     offset = bitbuffer_search(bitbuffer, 0, 0,
             preamble_pattern, sizeof(preamble_pattern) * 8);
 
-    if (offset >= bitbuffer->bits_per_row[0]) {
+    if (offset >= bitbuffer_bits_per_row(bitbuffer)[0]) {
         if (decoder->verbose) {
             fprintf(stderr, "%s: Sync word not found\n", __func__);
         }

@@ -151,7 +151,7 @@ battery change for each value
 static int rubicson_48659_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     int row;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     unsigned int id;
     float temp_f;
     data_t *data;
@@ -163,7 +163,7 @@ static int rubicson_48659_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    if ((bitbuffer->bits_per_row[row] > 33) || (bitbuffer->bits_per_row[row] < 10))
+    if ((bitbuffer_bits_per_row(bitbuffer)[row] > 33) || (bitbuffer_bits_per_row(bitbuffer)[row] < 10))
         return DECODE_ABORT_LENGTH;
 
     checksum = add_bytes(bb[row], 3) - bb[row][3];

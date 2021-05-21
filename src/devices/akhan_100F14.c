@@ -28,9 +28,9 @@ static int akhan_rke_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int cmd;
     char *cmd_str;
 
-    if (bitbuffer->bits_per_row[0] != 25)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 25)
         return DECODE_ABORT_LENGTH;
-    b = bitbuffer->bb[0];
+    b = bitbuffer_bb(bitbuffer)[0];
 
     //invert bits, short pulse is 0, long pulse is 1
     b[0] = ~b[0];

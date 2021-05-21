@@ -29,7 +29,7 @@ Packet nibbles:
 static int tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t *b;
     unsigned id;
     char id_str[9];
@@ -39,15 +39,17 @@ static int tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned 
     int temperature_f;
     int psibits;
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 160);
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, packet_bits, 160);
 
     // require 64 data bits
-    if (packet_bits.bits_per_row[0] < 64) {
+    if (bitbuffer_bits_per_row(packet_bits)[0] < 64) {
+        bitbuffer_free(packet_bits);
         return 0;
     }
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
 
     if (((b[0]+b[1]+b[2]+b[3]+b[4]+b[5]+b[6]) & 0xff) != b[7]) {
+        bitbuffer_free(packet_bits);
         return 0;
     }
 
@@ -64,6 +66,8 @@ static int tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned 
     else
         pressure_psi  = 6.8 + psibits * 0.2122727273;
     temperature_f = b[5];         // empirical guess
+
+    bitbuffer_free(packet_bits);
 
     /* clang-format off */
     data = data_make(
@@ -94,12 +98,12 @@ static int tpms_ford_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     bitbuffer_invert(bitbuffer);
 
-    for (row = 0; row < bitbuffer->num_rows; ++row) {
+    for (row = 0; row < bitbuffer_num_rows(bitbuffer); ++row) {
         bitpos = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
         while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos,
                 preamble_pattern, 16)) + 144 <=
-                bitbuffer->bits_per_row[row]) {
+                bitbuffer_bits_per_row(bitbuffer)[row]) {
             ret = tpms_ford_decode(decoder, bitbuffer, row, bitpos + 16);
             if (ret > 0)
                 events += ret;

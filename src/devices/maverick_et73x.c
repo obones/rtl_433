@@ -43,28 +43,30 @@ note that the mentioned quaternary conversion is actually manchester code.
 static int maverick_et73x_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitbuffer_t mc = {0};
+    bitbuffer_t* mc;
 
-    if (bitbuffer->num_rows != 1)
+    if (bitbuffer_num_rows(bitbuffer) != 1)
         return DECODE_ABORT_EARLY;
 
     //check correct data length
-    if (bitbuffer->bits_per_row[0] != 104) // 104 raw half-bits, 52 bits payload
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 104) // 104 raw half-bits, 52 bits payload
         return DECODE_ABORT_LENGTH;
 
     //check for correct preamble (0x55666a)
-    if ((bitbuffer->bb[0][0] != 0x55 ) || bitbuffer->bb[0][1] != 0x66 || bitbuffer->bb[0][2] != 0x6a)
+    if ((bitbuffer_bb(bitbuffer)[0][0] != 0x55 ) || bitbuffer_bb(bitbuffer)[0][1] != 0x66 || bitbuffer_bb(bitbuffer)[0][2] != 0x6a)
         return DECODE_ABORT_EARLY; // preamble missing
 
     // decode the inner manchester encoding
-    bitbuffer_manchester_decode(bitbuffer, 0, 0, &mc, 104);
+    mc = bitbuffer_alloc();
+    bitbuffer_manchester_decode(bitbuffer, 0, 0, mc, 104);
 
     // we require 7 bytes 13 nibble rounded up (  b[6] highest referance below )
-    if (mc.bits_per_row[0] < 52) {
+    if (bitbuffer_bits_per_row(mc)[0] < 52) {
+        bitbuffer_free(mc);
         return DECODE_FAIL_SANITY; // manchester_decode fail
     }
 
-    uint8_t *b = mc.bb[0];
+    uint8_t *b = bitbuffer_bb(mc)[0];
     int pre    = (b[0] << 4) | (b[1] & 0xf0) >> 4;
     int flags  = b[1] & 0x0f;
     int temp1  = (b[2] << 2) | (b[3] & 0xc0) >> 6;
@@ -81,7 +83,8 @@ static int maverick_et73x_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         status = "init";
 
     uint8_t chk[3];
-    bitbuffer_extract_bytes(&mc, 0, 12, chk, 24);
+    bitbuffer_extract_bytes(mc, 0, 12, chk, 24);
+    bitbuffer_free(mc);
 
     //digest is used to represent a session. This means, we get a new id if a reset or battery exchange is done.
     int id = lfsr_digest16(chk, 3, 0x8810, 0xdd38) ^ digest;

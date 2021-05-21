@@ -47,14 +47,14 @@ static int esic_emt7110_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data;
     uint8_t b[12];
 
-    if (bitbuffer->num_rows != 1)
+    if (bitbuffer_num_rows(bitbuffer) != 1)
         return DECODE_ABORT_EARLY;
-    if ((bitbuffer->bits_per_row[0] < 120) || (bitbuffer->bits_per_row[0] > 140))
+    if ((bitbuffer_bits_per_row(bitbuffer)[0] < 120) || (bitbuffer_bits_per_row(bitbuffer)[0] > 140))
         return DECODE_ABORT_LENGTH;
 
     unsigned offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof (preamble) * 8);
     offset += sizeof(preamble) * 8; // skip preamble
-    if (offset > bitbuffer->bits_per_row[0])
+    if (offset > bitbuffer_bits_per_row(bitbuffer)[0])
         return DECODE_ABORT_EARLY;
     bitbuffer_extract_bytes(bitbuffer, 0, offset, b, 96);
 

@@ -107,40 +107,42 @@ get_battery_status(uint8_t * msg)
 static int
 vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *source_bb = bitbuffer_bb(bitbuffer);
 
     data_t *data;
 
     // TODO: Use repeat signal for error checking / correction!
 
     // each row needs to have at least 128 bits (plus a few more due to bit stuffing)
-    if (bitbuffer->bits_per_row[0]<128)
+    if (bitbuffer_bits_per_row(bitbuffer)[0]<128)
         return DECODE_ABORT_LENGTH;
 
     // The protocol uses bit-stuffing => remove 0 bit after five consecutive 1 bits
     // Also, each byte is represented with least significant bit first -> swap them!
-    bitbuffer_t bits = {0};
+    bitbuffer_t* bits = bitbuffer_alloc();
     int ones = 0;
-    for (uint16_t k = 0; k < bitbuffer->bits_per_row[0]; k++) {
-        int b = bitrow_get_bit(bb[0], k);
+    for (uint16_t k = 0; k < bitbuffer_bits_per_row(bitbuffer)[0]; k++) {
+        int b = bitrow_get_bit(source_bb[0], k);
         if (b==1) {
-            bitbuffer_add_bit(&bits, 1);
+            bitbuffer_add_bit(bits, 1);
             ones++;
         } else {
             if (ones != 5) { // Ignore a 0 bit after five consecutive 1 bits:
-                bitbuffer_add_bit(&bits, 0);
+                bitbuffer_add_bit(bits, 0);
             }
             ones = 0;
         }
     }
 
-    uint16_t bitcount = bits.bits_per_row[0];
+    uint16_t bitcount = bitbuffer_bits_per_row(bits)[0];
 
     // Change to least-significant-bit last (protocol uses least-significant-bit first) for hex representation:
     for (uint16_t k = 0; k <= (uint16_t)(bitcount-1)/8; k++) {
-        bits.bb[0][k] = reverse8(bits.bb[0][k]);
+        bitbuffer_set_bb(bits, 0, k, reverse8(bitbuffer_bb(bits)[0][k]));
     }
-    bb = bits.bb;
+    bitrow_t bb = {0};
+    memcpy(&bb[0], bitbuffer_const_bb(bits), sizeof(bb)); // do a copy to allow calling return below without worrying about freeing databits
+    bitbuffer_free(bits);
 
     /* DEBUG: print out the received packet */
     //fprintf (stderr, "Vaillant ");
@@ -151,18 +153,18 @@ vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_LENGTH;
 
     // "Normal package":
-    if ((bb[0][0] == 0x00) && (bb[0][1] == 0x00) && (bb[0][2] == 0x7e) && (128 <= bitcount && bitcount <= 131)) {
+    if ((bb[0] == 0x00) && (bb[1] == 0x00) && (bb[2] == 0x7e) && (128 <= bitcount && bitcount <= 131)) {
 
-        if (!validate_checksum(decoder, bb[0], /* Data from-to: */3,11, /*Checksum from-to:*/12,13)) {
+        if (!validate_checksum(decoder, bb, /* Data from-to: */3,11, /*Checksum from-to:*/12,13)) {
             return DECODE_FAIL_MIC;
         }
 
         // Device ID starts at bit 4:
-        uint16_t deviceID = get_device_id(bb[0], 3);
-        uint8_t heating_mode = get_heating_mode(bb[0]); // 0=OFF, 1=ON (2-point heating), 2=ON (analogue heating)
-        uint8_t target_temperature = get_target_temperature(bb[0]);
-        uint8_t water_preheated = get_water_preheated(bb[0]); // 1=Pre-heat, 0=no pre-heated water
-        uint8_t isBatteryLow = get_battery_status(bb[0]);
+        uint16_t deviceID = get_device_id(bb, 3);
+        uint8_t heating_mode = get_heating_mode(bb); // 0=OFF, 1=ON (2-point heating), 2=ON (analogue heating)
+        uint8_t target_temperature = get_target_temperature(bb);
+        uint8_t water_preheated = get_water_preheated(bb); // 1=Pre-heat, 0=no pre-heated water
+        uint8_t isBatteryLow = get_battery_status(bb);
 
         data = data_make(
                 "model",   "", DATA_STRING, _X("Vaillant-VRT340f","Vaillant VRT340f Central Heating Thermostat"),
@@ -178,14 +180,14 @@ vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // "RF detection package":
-    if ((bb[0][0] == 0x00) && (bb[0][1] == 0x00) && (bb[0][2] == 0x7E) && (168 <= bitcount && bitcount <= 171)) {
+    if ((bb[0] == 0x00) && (bb[1] == 0x00) && (bb[2] == 0x7E) && (168 <= bitcount && bitcount <= 171)) {
 
-        if (!validate_checksum(decoder, bb[0], /* Data from-to: */3,16, /*Checksum from-to:*/17,18)) {
+        if (!validate_checksum(decoder, bb, /* Data from-to: */3,16, /*Checksum from-to:*/17,18)) {
             return DECODE_FAIL_MIC;
         }
 
         // Device ID starts at bit 12:
-        uint16_t deviceID = get_device_id(bb[0], 11);
+        uint16_t deviceID = get_device_id(bb, 11);
 
         data = data_make(
                 "model",   "", DATA_STRING, _X("Vaillant-VRT340f","Vaillant VRT340f Central Heating Thermostat (RF Detection)"),

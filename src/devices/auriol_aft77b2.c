@@ -78,8 +78,8 @@ static uint8_t lsrc( uint8_t frame[], int len )
 
 static int search_row( bitbuffer_t *bitbuffer )
 {
-   for (int row = 0; row < bitbuffer->num_rows; row++) {
-      if (bitbuffer->bits_per_row[row] == 68)
+   for (int row = 0; row < bitbuffer_num_rows(bitbuffer); row++) {
+      if (bitbuffer_bits_per_row(bitbuffer)[row] == 68)
          return row ;
    }
 
@@ -97,7 +97,7 @@ static int auriol_aft77_b2_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (row == -1)
        return DECODE_ABORT_EARLY;
 
-    uint8_t *ptr = bitbuffer->bb[row];
+    uint8_t *ptr = bitbuffer_bb(bitbuffer)[row];
 
     // Check the prefix
     if (*ptr != 0xA5)

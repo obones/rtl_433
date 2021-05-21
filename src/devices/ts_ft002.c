@@ -43,16 +43,16 @@ static int ts_ft002_decoder(r_device *decoder, bitbuffer_t *bitbuffer)
     int id, type, depth, transmit, temp_raw, batt_low;
     float temp_c;
 
-    if (bitbuffer->bits_per_row[0] == 72) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] == 72) {
         bitbuffer_extract_bytes(bitbuffer, 0, 0, b, 72);
     }
-    else if (bitbuffer->bits_per_row[0] == 71) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[0] == 71) {
         bitbuffer_extract_bytes(bitbuffer, 0, 7, b + 1, 64);
-        b[0] = bitbuffer->bb[0][0] >> 1;
+        b[0] = bitbuffer_bb(bitbuffer)[0][0] >> 1;
     }
-    else if (bitbuffer->bits_per_row[0] == 70) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[0] == 70) {
         bitbuffer_extract_bytes(bitbuffer, 0, 6, b + 1, 64);
-        b[0] = (bitbuffer->bb[0][0] >> 2) | 0x80;
+        b[0] = (bitbuffer_bb(bitbuffer)[0][0] >> 2) | 0x80;
     }
     else
         return DECODE_ABORT_LENGTH;

@@ -45,16 +45,16 @@ RMS18, Radio Shack 61-2675-T
 static int x10_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    uint8_t *b = bitbuffer->bb[1];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[1];
 
     uint8_t arrbKnownConstBitMask[4]  = {0x0B, 0x0B, 0x07, 0x07};
     uint8_t arrbKnownConstBitValue[4] = {0x00, 0x0B, 0x00, 0x07};
 
     // Row [0] is sync pulse
     // Validate length
-    if (bitbuffer->bits_per_row[1] != 32) { // Don't waste time on a wrong length package
+    if (bitbuffer_bits_per_row(bitbuffer)[1] != 32) { // Don't waste time on a wrong length package
         if (decoder->verbose)
-            fprintf(stderr, "X10-RF: DECODE_ABORT_LENGTH, Received message length=%i\n", bitbuffer->bits_per_row[1]);
+            fprintf(stderr, "X10-RF: DECODE_ABORT_LENGTH, Received message length=%i\n", bitbuffer_bits_per_row(bitbuffer)[1]);
         return DECODE_ABORT_LENGTH;
     }
 

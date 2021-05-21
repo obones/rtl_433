@@ -58,10 +58,10 @@ static int tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bitbuff
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[row] != 36)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] != 36)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     if (!(b[0] || b[1] || b[2] || b[3] || b[4])) /* exclude all zeros */
         return DECODE_ABORT_EARLY;

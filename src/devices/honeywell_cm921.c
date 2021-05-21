@@ -15,6 +15,7 @@ Honeywell CM921 Thermostat (subset of Evohome).
 */
 
 #include "decoder.h"
+#include <malloc.h>
 
 // #define _DEBUG
 
@@ -53,12 +54,14 @@ typedef struct {
 static data_t *add_hex_string(data_t *data, const char *name, const uint8_t *buf, size_t buf_sz)
 {
     if (buf && buf_sz > 0)  {
-        char tstr[(buf_sz * 2) + 1]; // note: VLA should not be used
+        //char tstr[(buf_sz * 2) + 1]; // note: VLA should not be used
+        char *tstr = malloc((buf_sz * 2) + 1); // note: VLA should not be used
         char *p = tstr;
         for (unsigned i = 0; i < buf_sz; i++, p+=2)
             sprintf(p, "%02x", buf[i]);
         *p = '\0';
         data = data_append(data, name, "", DATA_STRING, tstr, NULL);
+        free(tstr);
     }
     return data;
 }
@@ -257,19 +260,19 @@ static uint8_t next(const uint8_t *bb, unsigned *ipos, unsigned num_bytes)
 
 static int parse_msg(bitbuffer_t *bmsg, int row, message_t *msg)
 {
-    if (!bmsg || row >= bmsg->num_rows || bmsg->bits_per_row[row] < 8)
+    if (!bmsg || row >= bitbuffer_num_rows(bmsg) || bitbuffer_bits_per_row(bmsg)[row] < 8)
         return DECODE_ABORT_LENGTH;
 
-    unsigned num_bytes = bmsg->bits_per_row[0]/8;
-    unsigned num_bits = bmsg->bits_per_row[0];
+    unsigned num_bytes = bitbuffer_bits_per_row(bmsg)[0]/8;
+    unsigned num_bits = bitbuffer_bits_per_row(bmsg)[0];
     unsigned ipos = 0;
-    const uint8_t *bb = bmsg->bb[row];
+    const uint8_t *bb = bitbuffer_bb(bmsg)[row];
     memset(msg, 0, sizeof(message_t));
 
     // Checksum: All bytes add up to 0.
     int bsum = add_bytes(bb, num_bytes) & 0xff;
     int checksum_ok = bsum == 0;
-    msg->crc = bitrow_get_byte(bb, bmsg->bits_per_row[row] - 8);
+    msg->crc = bitrow_get_byte(bb, bitbuffer_bits_per_row(bmsg)[row] - 8);
 
     if (!checksum_ok)
         return DECODE_FAIL_MIC;
@@ -295,7 +298,7 @@ static int parse_msg(bitbuffer_t *bmsg, int row, message_t *msg)
 
     if (ipos < num_bits - 8)
     {
-      unsigned num_unparsed_bits = (bmsg->bits_per_row[row] - 8) - ipos;
+      unsigned num_unparsed_bits = (bitbuffer_bits_per_row(bmsg)[row] - 8) - ipos;
       msg->unparsed_length = (num_unparsed_bits / 8) + (num_unparsed_bits % 8) ? 1 : 0;
       if (msg->unparsed_length != 0)
           bitbuffer_extract_bytes(bmsg, row, ipos, msg->unparsed, num_unparsed_bits);
@@ -320,69 +323,78 @@ static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     const uint8_t preamble_bit_length = 30;
     const int row = 0; // we expect a single row only.
 
-    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[row] < 60)
+    if (bitbuffer_num_rows(bitbuffer) != 1 || bitbuffer_bits_per_row(bitbuffer)[row] < 60)
         return DECODE_ABORT_LENGTH;
 
     if (decoder->verbose)
-        bitrow_printf(bitbuffer->bb[row], bitbuffer->bits_per_row[row], "%s: ", __func__);
+        bitrow_printf(bitbuffer_bb(bitbuffer)[row], bitbuffer_bits_per_row(bitbuffer)[row], "%s: ", __func__);
 
     int preamble_start = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, preamble_bit_length);
     int start = preamble_start + preamble_bit_length;
-    int len = bitbuffer->bits_per_row[row] - start;
+    int len = bitbuffer_bits_per_row(bitbuffer)[row] - start;
     if (decoder->verbose)
         fprintf(stderr, "preamble_start=%d start=%d len=%d\n", preamble_start, start, len);
     if (len < 8)
         return DECODE_ABORT_LENGTH;
     int end = start + len;
 
-    bitbuffer_t bytes = {0};
+    bitbuffer_t* bytes = bitbuffer_alloc();
     int pos = start;
     while (pos < end) {
         uint8_t byte = 0;
-        if (decode_10to8(bitbuffer->bb[row], pos, end, &byte) != 10)
+        if (decode_10to8(bitbuffer_bb(bitbuffer)[row], pos, end, &byte) != 10)
             break;
         for (unsigned i = 0; i < 8; i++)
-            bitbuffer_add_bit(&bytes, (byte >> i) & 0x1);
+            bitbuffer_add_bit(bytes, (byte >> i) & 0x1);
         pos += 10;
     }
 
     // Skip Manchester breaking header
     uint8_t header[3] = { 0x33, 0x55, 0x53 };
-    if (bitrow_get_byte(bytes.bb[row], 0) != header[0] ||
-        bitrow_get_byte(bytes.bb[row], 8) != header[1] ||
-        bitrow_get_byte(bytes.bb[row], 16) != header[2])
+    if (bitrow_get_byte(bitbuffer_bb(bytes)[row], 0) != header[0] ||
+        bitrow_get_byte(bitbuffer_bb(bytes)[row], 8) != header[1] ||
+        bitrow_get_byte(bitbuffer_bb(bytes)[row], 16) != header[2]) {
+        bitbuffer_free(bytes);
         return DECODE_FAIL_SANITY;
+    }
 
     // Find Footer 0x35 (0x55*)
-    int fi = bytes.bits_per_row[row] - 8;
+    int fi = bitbuffer_bits_per_row(bytes)[row] - 8;
     int seen_aa = 0;
-    while (bitrow_get_byte(bytes.bb[row], fi) == 0x55) {
+    while (bitrow_get_byte(bitbuffer_bb(bytes)[row], fi) == 0x55) {
         seen_aa = 1;
         fi -= 8;
     }
-    if (!seen_aa || bitrow_get_byte(bytes.bb[row], fi) != 0x35)
+    if (!seen_aa || bitrow_get_byte(bitbuffer_bb(bytes)[row], fi) != 0x35) {
+        bitbuffer_free(bytes);
         return DECODE_FAIL_SANITY;
+    }
 
     unsigned first_byte = 24;
     unsigned end_byte   = fi;
     unsigned num_bits   = end_byte - first_byte;
     //unsigned num_bytes = num_bits/8 / 2;
 
-    bitbuffer_t packet = {0};
-    unsigned fpos = bitbuffer_manchester_decode(&bytes, row, first_byte, &packet, num_bits);
+    bitbuffer_t* packet = bitbuffer_alloc();
+    unsigned fpos = bitbuffer_manchester_decode(bytes, row, first_byte, packet, num_bits);
     unsigned man_errors = num_bits - (fpos - first_byte - 2);
+    bitbuffer_free(bytes);
 
 #ifndef _DEBUG
-    if (man_errors != 0)
+    if (man_errors != 0) {
+        bitbuffer_free(packet);
         return DECODE_FAIL_SANITY;
+    }
 #endif
 
     message_t message;
 
-    int pr = parse_msg(&packet, 0, &message);
+    int pr = parse_msg(packet, 0, &message);
 
-    if (pr <= 0)
+    if (pr <= 0) {
+        bitbuffer_free(packet);
         return pr;
+    }
 
     /* clang-format off */
     data_t *data = data_make(
@@ -394,7 +406,7 @@ static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data = interpret_message(&message, data, decoder->verbose);
 
 #ifdef _DEBUG
-    data = add_hex_string(data, "Packet", packet.bb[row], packet.bits_per_row[row] / 8);
+    data = add_hex_string(data, "Packet", bitbuffer_bb(packet)[row], bitbuffer_bits_per_row(packet)[row] / 8);
     data = add_hex_string(data, "Header", &message.header, 1);
     uint8_t cmd[2] = {message.command >> 8, message.command & 0x00FF};
     data = add_hex_string(data, "Command", cmd, 2);
@@ -406,6 +418,7 @@ static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     decoder_output_data(decoder, data);
 
+    bitbuffer_free(packet);
     return 1;
 }
 

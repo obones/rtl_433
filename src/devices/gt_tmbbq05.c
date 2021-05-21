@@ -83,7 +83,7 @@ static int gt_tmbbq05_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int r = bitbuffer_find_repeated_row(bitbuffer, 5, 33);
 
     // we're looking for exactly 33 bits
-    if (r < 0 || bitbuffer->bits_per_row[r] != 33)
+    if (r < 0 || bitbuffer_bits_per_row(bitbuffer)[r] != 33)
         return DECODE_ABORT_LENGTH;
 
     // remove the first leading bit and extract the 4 bytes carrying the data

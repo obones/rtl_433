@@ -37,10 +37,10 @@ static int generic_motion_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int code;
     char code_str[6];
 
-    for (int i = 0; i < bitbuffer->num_rows; ++i) {
-        b = bitbuffer->bb[i];
+    for (int i = 0; i < bitbuffer_num_rows(bitbuffer); ++i) {
+        b = bitbuffer_bb(bitbuffer)[i];
         // strictly validate package as there is no checksum
-        if ((bitbuffer->bits_per_row[i] != 20)
+        if ((bitbuffer_bits_per_row(bitbuffer)[i] != 20)
                 || ((b[1] == 0) && (b[2] == 0))
                 || ((b[1] == 0xff) && (b[2] == 0xff))
                 || count_repeats(bitbuffer, i) < 3)

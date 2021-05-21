@@ -67,24 +67,24 @@ static int philips_aj3650_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_invert(bitbuffer);
 
     /* Correct number of rows? */
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer_num_rows(bitbuffer) != 1) {
         if (decoder->verbose > 1) {
             fprintf(stderr, "%s: wrong number of rows (%d)\n",
-                    __func__, bitbuffer->num_rows);
+                    __func__, bitbuffer_num_rows(bitbuffer));
         }
         return DECODE_ABORT_EARLY;
     }
 
     /* Correct bit length? */
-    if (bitbuffer->bits_per_row[0] != PHILIPS_BITLEN) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != PHILIPS_BITLEN) {
         if (decoder->verbose > 1) {
             fprintf(stderr, "%s: wrong number of bits (%d)\n",
-                    __func__, bitbuffer->bits_per_row[0]);
+                    __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         }
         return DECODE_ABORT_LENGTH;
     }
 
-    bb = bitbuffer->bb[0];
+    bb = bitbuffer_bb(bitbuffer)[0];
 
     /* Correct start sequence? */
     if ((bb[0] >> 4) != PHILIPS_STARTNIBBLE) {

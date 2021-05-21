@@ -29,16 +29,16 @@ Ecowitt Wireless Outdoor Thermometer WH53/WH0280/WH0281A.
 static int ecowitt_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     // All Ecowitt packets have one row.
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer_num_rows(bitbuffer) != 1) {
         return DECODE_ABORT_LENGTH;
     }
 
     // All Ecowitt packets have 55 bits.
-    if (bitbuffer->bits_per_row[0] != 55) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 55) {
         return DECODE_ABORT_LENGTH;
     }
 
-    uint8_t *row = bitbuffer->bb[0];
+    uint8_t *row = bitbuffer_bb(bitbuffer)[0];
 
     // All Ecowitt packets have the first 7 bits set.
     uint8_t first7bits = row[0] >> 1;

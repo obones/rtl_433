@@ -27,11 +27,11 @@ static int blyss_callback(r_device *decoder,bitbuffer_t *bitbuffer)
     uint8_t *b;
     char id_str[16];
 
-    for (int i = 0; i < bitbuffer->num_rows; ++i) {
-        if (bitbuffer->bits_per_row[i] != 33) // last row is 32
+    for (int i = 0; i < bitbuffer_num_rows(bitbuffer); ++i) {
+        if (bitbuffer_bits_per_row(bitbuffer)[i] != 33) // last row is 32
             continue; // DECODE_ABORT_LENGTH
 
-        b = bitbuffer->bb[i];
+        b = bitbuffer_bb(bitbuffer)[i];
 
         //This needs additional validation, but works on mine. Suspect each DC5-UK-WH uses different codes as the transmitter
         //is paired to the receivers to avoid being triggered by the neighbours transmitter ?!?

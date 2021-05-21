@@ -39,10 +39,10 @@ static int wssensor_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // the signal should have 23 repeats
     // require at least 4 received repeats
     int r = bitbuffer_find_repeated_row(bitbuffer, WS_MINREPEATS, WS_REPEATS);
-    if (r < 0 || bitbuffer->bits_per_row[r] != WS_PACKETLEN)
+    if (r < 0 || bitbuffer_bits_per_row(bitbuffer)[r] != WS_PACKETLEN)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
 
     // No need to decode/extract values for simple test
     if ((!b[0] && !b[1] && !b[2])

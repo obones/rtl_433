@@ -43,9 +43,9 @@ static int kerui_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (r < 0)
         return DECODE_ABORT_LENGTH;
 
-    if (bitbuffer->bits_per_row[r] != 25)
+    if (bitbuffer_bits_per_row(bitbuffer)[r] != 25)
         return DECODE_ABORT_LENGTH;
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
 
     // No need to decode/extract values for simple test
     if ( !b[0] && !b[1] && !b[2] ) {

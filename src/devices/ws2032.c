@@ -46,7 +46,7 @@ static int fineoffset_ws2032_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     unsigned offset = bitbuffer_search(bitbuffer, row, 0, preamble, 8);
-    if (offset + 14 * 8 > bitbuffer->bits_per_row[row]) {
+    if (offset + 14 * 8 > bitbuffer_bits_per_row(bitbuffer)[row]) {
         return DECODE_ABORT_LENGTH;
     }
 

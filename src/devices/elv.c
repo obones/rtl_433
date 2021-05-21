@@ -26,7 +26,7 @@ static uint16_t AD_POP(uint8_t *bb, uint8_t bits, uint8_t bit)
 static int em1000_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     uint8_t dec[10];
     uint8_t bytes=0;
     uint8_t bit=18; // preamble
@@ -119,7 +119,7 @@ r_device elv_em1000 = {
 static int ws2000_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     uint8_t dec[13]={0};
     uint8_t nibbles=0;
     uint8_t bit=11; // preamble

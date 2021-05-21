@@ -127,7 +127,7 @@ static int lacrosse_tx141x_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Find the most frequent data packet
     // reduce false positives, require at least 5 out of 12 or 3 of 4 repeats.
-    r = bitbuffer_find_repeated_row(bitbuffer, bitbuffer->num_rows > 4 ? 5 : 3, 32); // 32
+    r = bitbuffer_find_repeated_row(bitbuffer, bitbuffer_num_rows(bitbuffer) > 4 ? 5 : 3, 32); // 32
     if (r < 0) {
         // try again for TX141W/TX145wsdth, require at least 2 out of 3-7 repeats.
         r = bitbuffer_find_repeated_row(bitbuffer, 2, 64); // 65
@@ -136,32 +136,32 @@ static int lacrosse_tx141x_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_LENGTH;
     }
 
-    if (bitbuffer->bits_per_row[r] >= 64) {
+    if (bitbuffer_bits_per_row(bitbuffer)[r] >= 64) {
         device = LACROSSE_TX141W;
     }
-    else if (bitbuffer->bits_per_row[r] > 41) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[r] > 41) {
         return DECODE_ABORT_LENGTH;
     }
-    else if (bitbuffer->bits_per_row[r] >= 41) {
-        if (bitbuffer->num_rows > 12) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[r] >= 41) {
+        if (bitbuffer_num_rows(bitbuffer) > 12) {
             return DECODE_ABORT_LENGTH; // false-positive with GT-WT03
         }
         device = LACROSSE_TX141TH; // actually TX141TH-BV3
     }
-    else if (bitbuffer->bits_per_row[r] >= 40) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[r] >= 40) {
         device = LACROSSE_TX141TH;
     }
-    else if (bitbuffer->bits_per_row[r] >= 37) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[r] >= 37) {
         device = LACROSSE_TX141;
     }
-    else if (bitbuffer->bits_per_row[r] == 32) {
+    else if (bitbuffer_bits_per_row(bitbuffer)[r] == 32) {
         device = LACROSSE_TX141B;
     } else {
         device = LACROSSE_TX141BV3;
     }
 
     bitbuffer_invert(bitbuffer);
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
 
     if (device == LACROSSE_TX141W) {
         int pre = (b[0] >> 3);

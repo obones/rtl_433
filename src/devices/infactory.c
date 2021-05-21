@@ -67,10 +67,10 @@ static int infactory_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int id, battery_low, temp_raw, humidity, channel;
     float temp_f;
 
-    if (bitbuffer->bits_per_row[0] != 40)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 40)
         return DECODE_ABORT_LENGTH;
 
-    bb = bitbuffer->bb;
+    bb = bitbuffer_bb(bitbuffer);
     b = bb[0];
 
     /* Check that the last 4 bits of message are not 0 (channel number 1 - 3) */

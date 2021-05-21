@@ -136,10 +136,10 @@ static uint32_t ikea_sparsnas_brute_force_encryption(uint8_t buffer[18])
 static int ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
 
-    if ((bitbuffer->bits_per_row[0] < IKEA_SPARSNAS_MESSAGE_BITLEN) || (bitbuffer->bits_per_row[0] > IKEA_SPARSNAS_MESSAGE_BITLEN_MAX)) {
+    if ((bitbuffer_bits_per_row(bitbuffer)[0] < IKEA_SPARSNAS_MESSAGE_BITLEN) || (bitbuffer_bits_per_row(bitbuffer)[0] > IKEA_SPARSNAS_MESSAGE_BITLEN_MAX)) {
         if (decoder->verbose > 1) {
             decoder_output_bitbufferf(decoder, bitbuffer, "%s: ", __func__);
-            fprintf(stderr, "%s: Too short or too long packet received. Expected %d, received %d\n", __func__, IKEA_SPARSNAS_MESSAGE_BITLEN, bitbuffer->bits_per_row[0]);
+            fprintf(stderr, "%s: Too short or too long packet received. Expected %d, received %d\n", __func__, IKEA_SPARSNAS_MESSAGE_BITLEN, bitbuffer_bits_per_row(bitbuffer)[0]);
         }
         return DECODE_ABORT_LENGTH;
     }
@@ -147,7 +147,7 @@ static int ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // Look for preamble
     uint16_t bitpos = bitbuffer_search(bitbuffer, 0, 0, (const uint8_t *)&preamble_pattern, IKEA_SPARSNAS_PREAMBLE_BITLEN);
 
-    if ((bitbuffer->bits_per_row[0] == bitpos) || (bitpos + IKEA_SPARSNAS_MESSAGE_BITLEN > bitbuffer->bits_per_row[0])) {
+    if ((bitbuffer_bits_per_row(bitbuffer)[0] == bitpos) || (bitpos + IKEA_SPARSNAS_MESSAGE_BITLEN > bitbuffer_bits_per_row(bitbuffer)[0])) {
         if (decoder->verbose > 1) {
             decoder_output_bitbufferf(decoder, bitbuffer, "%s: ", __func__);
             fprintf(stderr, "%s: malformed package, preamble not found. (Expected 0xAAAAD201)\n", __func__);

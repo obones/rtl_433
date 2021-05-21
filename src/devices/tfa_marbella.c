@@ -55,7 +55,7 @@ static int tfa_marbella_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0,
             preamble_pattern, sizeof (preamble_pattern) * 8);
 
-    if (bitpos == bitbuffer->bits_per_row[0])
+    if (bitpos == bitbuffer_bits_per_row(bitbuffer)[0])
         return DECODE_FAIL_SANITY;
 
     bitbuffer_extract_bytes(bitbuffer, 0, start_pos, msg, sizeof(msg) * 8);

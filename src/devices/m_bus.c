@@ -938,13 +938,13 @@ static int m_bus_mode_c_t_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     char *mode = "";
 
     // Validate package length
-    if (bitbuffer->bits_per_row[0] < (32+13*8) || bitbuffer->bits_per_row[0] > (64+256*12)) {  // Min/Max (Preamble + payload)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < (32+13*8) || bitbuffer_bits_per_row(bitbuffer)[0] > (64+256*12)) {  // Min/Max (Preamble + payload)
         return DECODE_ABORT_LENGTH;
     }
 
     // Find a Mode T or C data package
     unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, PREAMBLE_T, sizeof(PREAMBLE_T)*8);
-    if (bit_offset + 13*8 >= bitbuffer->bits_per_row[0]) {  // Did not find a big enough package
+    if (bit_offset + 13*8 >= bitbuffer_bits_per_row(bitbuffer)[0]) {  // Did not find a big enough package
         return DECODE_ABORT_EARLY;
     }
 
@@ -953,18 +953,18 @@ static int m_bus_mode_c_t_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
     bit_offset += sizeof(PREAMBLE_T)*8;     // skip preamble
 
-    uint8_t next_byte = bitrow_get_byte(bitbuffer->bb[0], bit_offset);
+    uint8_t next_byte = bitrow_get_byte(bitbuffer_bb(bitbuffer)[0], bit_offset);
     bit_offset += 8;
     // Mode C
     if (next_byte == 0x54) {
         mode = "C";
-        next_byte = bitrow_get_byte(bitbuffer->bb[0], bit_offset);
+        next_byte = bitrow_get_byte(bitbuffer_bb(bitbuffer)[0], bit_offset);
         bit_offset += 8;
         // Format A
         if (next_byte == 0xCD) {
             if (decoder->verbose) { fprintf(stderr, "M-Bus: Mode C, Format A\n"); }
             // Extract data
-            data_in.length = (bitbuffer->bits_per_row[0]-bit_offset)/8;
+            data_in.length = (bitbuffer_bits_per_row(bitbuffer)[0]-bit_offset)/8;
             bitbuffer_extract_bytes(bitbuffer, 0, bit_offset, data_in.data, data_in.length*8);
             // Decode
             if (!m_bus_decode_format_a(decoder, &data_in, &data_out, &block1))    return 0;
@@ -973,7 +973,7 @@ static int m_bus_mode_c_t_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         else if (next_byte == 0x3D) {
             if (decoder->verbose) { fprintf(stderr, "M-Bus: Mode C, Format B\n"); }
             // Extract data
-            data_in.length = (bitbuffer->bits_per_row[0]-bit_offset)/8;
+            data_in.length = (bitbuffer_bits_per_row(bitbuffer)[0]-bit_offset)/8;
             bitbuffer_extract_bytes(bitbuffer, 0, bit_offset, data_in.data, data_in.length*8);
             // Decode
             if (!m_bus_decode_format_b(decoder, &data_in, &data_out, &block1))    return 0;
@@ -995,10 +995,10 @@ static int m_bus_mode_c_t_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         if (decoder->verbose) { fprintf(stderr, "Experimental - Not tested\n"); }
         // Extract data
 
-        data_in.length = (bitbuffer->bits_per_row[0]-bit_offset)/12;    // Each byte is encoded into 12 bits
+        data_in.length = (bitbuffer_bits_per_row(bitbuffer)[0]-bit_offset)/12;    // Each byte is encoded into 12 bits
 
         if (decoder->verbose) { fprintf(stderr, "MBus telegram length: %u\n", data_in.length); }
-        if (m_bus_decode_3of6_buffer(bitbuffer->bb[0], bit_offset, data_in.data, data_in.length) < 0) {
+        if (m_bus_decode_3of6_buffer(bitbuffer_bb(bitbuffer)[0], bit_offset, data_in.data, data_in.length) < 0) {
             if (decoder->verbose) fprintf(stderr, "M-Bus: Decoding error\n");
             return 0;
         }
@@ -1020,13 +1020,13 @@ static int m_bus_mode_r_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     m_bus_block1_t  block1      = {0};  // Block1 fields from Data Link layer
 
     // Validate package length
-    if (bitbuffer->bits_per_row[0] < (32+13*8) || bitbuffer->bits_per_row[0] > (64+256*8)) {  // Min/Max (Preamble + payload)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < (32+13*8) || bitbuffer_bits_per_row(bitbuffer)[0] > (64+256*8)) {  // Min/Max (Preamble + payload)
         return 0;
     }
 
     // Find a data package
     unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, PREAMBLE_RA, sizeof(PREAMBLE_RA)*8);
-    if (bit_offset + 13*8 >= bitbuffer->bits_per_row[0]) {  // Did not find a big enough package
+    if (bit_offset + 13*8 >= bitbuffer_bits_per_row(bitbuffer)[0]) {  // Did not find a big enough package
         return 0;
     }
     bit_offset += sizeof(PREAMBLE_RA)*8;     // skip preamble
@@ -1034,7 +1034,7 @@ static int m_bus_mode_r_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (decoder->verbose) { fprintf(stderr, "M-Bus: Mode R, Format A\n"); }
     if (decoder->verbose) { fprintf(stderr, "Experimental - Not tested\n"); }
     // Extract data
-    data_in.length = (bitbuffer->bits_per_row[0]-bit_offset)/8;
+    data_in.length = (bitbuffer_bits_per_row(bitbuffer)[0]-bit_offset)/8;
     bitbuffer_extract_bytes(bitbuffer, 0, bit_offset, data_in.data, data_in.length*8);
     // Decode
     if (!m_bus_decode_format_a(decoder, &data_in, &data_out, &block1))    return 0;
@@ -1055,18 +1055,18 @@ static int m_bus_mode_f_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     //m_bus_block1_t  block1      = {0};  // Block1 fields from Data Link layer
 
     // Validate package length
-    if (bitbuffer->bits_per_row[0] < (32+13*8) || bitbuffer->bits_per_row[0] > (64+256*8)) {  // Min/Max (Preamble + payload)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < (32+13*8) || bitbuffer_bits_per_row(bitbuffer)[0] > (64+256*8)) {  // Min/Max (Preamble + payload)
         return 0;
     }
 
     // Find a Mode F data package
     unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, PREAMBLE_F, sizeof(PREAMBLE_F)*8);
-    if (bit_offset + 13*8 >= bitbuffer->bits_per_row[0]) {  // Did not find a big enough package
+    if (bit_offset + 13*8 >= bitbuffer_bits_per_row(bitbuffer)[0]) {  // Did not find a big enough package
         return 0;
     }
     bit_offset += sizeof(PREAMBLE_F)*8;     // skip preamble
 
-    uint8_t next_byte = bitrow_get_byte(bitbuffer->bb[0], bit_offset);
+    uint8_t next_byte = bitrow_get_byte(bitbuffer_bb(bitbuffer)[0], bit_offset);
     bit_offset += 8;
     // Format A
     if (next_byte == 0x8D) {
@@ -1096,21 +1096,23 @@ static int m_bus_mode_f_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 static int m_bus_mode_s_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     static const uint8_t PREAMBLE_S[]  = {0x54, 0x76, 0x96};  // Mode S Preamble
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits;
     m_bus_data_t    data_in     = {0};  // Data from Physical layer decoded to bytes
     m_bus_data_t    data_out    = {0};  // Data from Data Link layer
     m_bus_block1_t  block1      = {0};  // Block1 fields from Data Link layer
 
     // Validate package length
-    if (bitbuffer->bits_per_row[0] < (32+13*8) || bitbuffer->bits_per_row[0] > (64+256*8)) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < (32+13*8) || bitbuffer_bits_per_row(bitbuffer)[0] > (64+256*8)) {
         return DECODE_ABORT_LENGTH;
     }
 
     // Find a Mode S data package
     unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, PREAMBLE_S, sizeof(PREAMBLE_S)*8);
-    bitbuffer_manchester_decode(bitbuffer, 0, bit_offset+sizeof(PREAMBLE_S)*8, &packet_bits, 800);
-    data_in.length = (bitbuffer->bits_per_row[0]);
-    bitbuffer_extract_bytes(&packet_bits, 0, 0, data_in.data, data_in.length);
+    packet_bits = bitbuffer_alloc();
+    bitbuffer_manchester_decode(bitbuffer, 0, bit_offset+sizeof(PREAMBLE_S)*8, packet_bits, 800);
+    data_in.length = (bitbuffer_bits_per_row(bitbuffer)[0]);
+    bitbuffer_extract_bytes(packet_bits, 0, 0, data_in.data, data_in.length);
+    bitbuffer_free(packet_bits);
 
     if (!m_bus_decode_format_a(decoder, &data_in, &data_out, &block1))    return 0;
 

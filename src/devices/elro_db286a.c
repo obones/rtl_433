@@ -34,10 +34,10 @@ static int elro_db286a_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // 33 bits expected, 5 minimum packet repetitions (14 expected)
     int row = bitbuffer_find_repeated_row(bitbuffer, 5, 33);
 
-    if (row < 0 || bitbuffer->bits_per_row[row] != 33)
+    if (row < 0 || bitbuffer_bits_per_row(bitbuffer)[row] != 33)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     // 32 bits, trailing bit is dropped
     sprintf(id_str, "%02x%02x%02x%02x", b[0], b[1], b[2], b[3]);

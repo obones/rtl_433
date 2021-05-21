@@ -56,31 +56,35 @@ static int cavius_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Find the sync
     unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof(preamble) * 8);
-    if (bit_offset + 22 * 8 >= bitbuffer->bits_per_row[0]) { // Did not find a big enough package
+    if (bit_offset + 22 * 8 >= bitbuffer_bits_per_row(bitbuffer)[0]) { // Did not find a big enough package
         return DECODE_ABORT_EARLY;
     }
     bit_offset += sizeof(preamble) * 8; // skip sync
 
-    bitbuffer_t databits = {0};
+    bitbuffer_t* databits = bitbuffer_alloc();
 
-    bitbuffer_manchester_decode(bitbuffer, 0, bit_offset, &databits, 11 * 8);
-    bitbuffer_invert(&databits);
+    bitbuffer_manchester_decode(bitbuffer, 0, bit_offset, databits, 11 * 8);
+    bitbuffer_invert(databits);
 
     // we require 11 bytes
-    if (databits.bits_per_row[0] < 11 * 8) {
+    if (bitbuffer_bits_per_row(databits)[0] < 11 * 8) {
+        bitbuffer_free(databits);
         return DECODE_FAIL_SANITY; // manchester_decode fail
     }
 
-    uint8_t *b = databits.bb[0];
+    uint8_t const *b = bitbuffer_bb(databits)[0];
 
     uint32_t net_id    = ((uint32_t)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
     uint32_t sender_id = ((uint32_t)b[7] << 24) | (b[8] << 16) | (b[9] << 8) | (b[10]);
     int message        = (b[4]);
     int batt_low       = (b[4] & cavius_battlow) != 0;
 
-    int crc = crc8le(databits.bb[0], 7, 0x31, 0x0);
-    if (crc != 0)
+    int crc = crc8le(bitbuffer_bb(databits)[0], 7, 0x31, 0x0);
+    if (crc != 0) {
+        bitbuffer_free(databits);
         return DECODE_FAIL_MIC; // invalid CRC
+    }
+    bitbuffer_free(databits);
 
     char *text = "Unknown";
     switch (message) {

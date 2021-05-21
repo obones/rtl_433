@@ -49,12 +49,12 @@ static int
 ss_sensor_parser(r_device *decoder, bitbuffer_t *bitbuffer, int row)
 {
     data_t *data;
-    uint8_t *b = bitbuffer->bb[row];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[row];
     char id[6];
     char extradata[30] = "";
 
     // each row needs to have exactly 92 bits
-    if (bitbuffer->bits_per_row[row] != 92)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] != 92)
         return DECODE_ABORT_LENGTH;
 
     uint8_t seq = reverse8(b[8]);
@@ -90,7 +90,7 @@ static int
 ss_pinentry_parser(r_device *decoder, bitbuffer_t *bitbuffer, int row)
 {
     data_t *data;
-    uint8_t *b = bitbuffer->bb[row];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[row];
     char id[6];
     char extradata[30];
     // In a keypad message the pin is encoded in bytes 10 and 11 with the the digits each using 4 bits
@@ -124,7 +124,7 @@ static int
 ss_keypad_commands(r_device *decoder, bitbuffer_t *bitbuffer, int row)
 {
     data_t *data;
-    uint8_t *b = bitbuffer->bb[row];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[row];
     char id[6];
     char extradata[30]; // = "Arming: ";
 
@@ -169,7 +169,7 @@ ss_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer)
       return DECODE_ABORT_EARLY;
 
     // The row must start with 0xcc5f (0x33a0 inverted).
-    uint8_t *b = bitbuffer->bb[row];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[row];
     if (b[0] != 0xcc || b[1] != 0x5f)
       return DECODE_ABORT_EARLY;
 

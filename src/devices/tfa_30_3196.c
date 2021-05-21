@@ -54,7 +54,7 @@ static int tfa_303196_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int row;
     data_t *data;
     uint8_t *b;
-    bitbuffer_t databits = {0};
+    bitbuffer_t* databits;
 
     row = bitbuffer_find_repeated_row(bitbuffer, 2, 48 * 2 + 12); // expected are 4 rows, require 2
     if (row < 0)
@@ -63,18 +63,23 @@ static int tfa_303196_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 16);
     start_pos += 12; // skip preamble
 
-    if (bitbuffer->bits_per_row[row] - start_pos < 48 * 2)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] - start_pos < 48 * 2)
         return DECODE_ABORT_LENGTH; // short buffer or preamble not found
 
-    bitbuffer_manchester_decode(bitbuffer, row, start_pos, &databits, 48);
+    databits = bitbuffer_alloc();
+    bitbuffer_manchester_decode(bitbuffer, row, start_pos, databits, 48);
 
-    if (databits.bits_per_row[0] < 48)
+    if (bitbuffer_bits_per_row(databits)[0] < 48) {
+        bitbuffer_free(databits);
         return DECODE_ABORT_LENGTH; // payload malformed MC
+    }
 
-    b = databits.bb[0];
+    b = bitbuffer_bb(databits)[0];
 
-    if (b[0] != 0xa8)
+    if (b[0] != 0xa8) {
+        bitbuffer_free(databits);
         return DECODE_FAIL_SANITY;
+    }
 
     uint16_t digest   = (b[4] << 8) | (b[5]);
     int chk           = lfsr_digest16(b, 4, 0x8810, 0x22d0) ^ digest;
@@ -86,6 +91,8 @@ static int tfa_303196_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     float temp_c    = temp_raw * 0.1 - 40;
     int battery_low = b[3] >> 7;
     int humidity    = b[3] & 0x7F;
+
+    bitbuffer_free(databits);
 
     /* clang-format off */
     data = data_make(

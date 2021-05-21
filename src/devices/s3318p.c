@@ -63,13 +63,13 @@ static int s3318p_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data;
 
     // ignore if two leading sync pulses (Esperanza EWS)
-    if (bitbuffer->bits_per_row[0] == 0 && bitbuffer->bits_per_row[1] == 0)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] == 0 && bitbuffer_bits_per_row(bitbuffer)[1] == 0)
         return DECODE_ABORT_EARLY;
 
     // the signal should have 6 repeats with a sync pulse between
     // require at least 4 received repeats
     int r = bitbuffer_find_repeated_row(bitbuffer, 4, 42);
-    if (r < 0 || bitbuffer->bits_per_row[r] != 42)
+    if (r < 0 || bitbuffer_bits_per_row(bitbuffer)[r] != 42)
         return DECODE_ABORT_LENGTH;
 
     // remove the two leading 0-bits and align the data

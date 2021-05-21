@@ -66,12 +66,12 @@ static int missil_ml0757_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (r < 0)
         return DECODE_ABORT_EARLY;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
 
-    if (bitbuffer->bits_per_row[0] > 0)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] > 0)
         return DECODE_ABORT_EARLY; // First row must be 0-length
 
-    if (bitbuffer->bits_per_row[r] > 40)
+    if (bitbuffer_bits_per_row(bitbuffer)[r] > 40)
         return DECODE_ABORT_LENGTH; // Message too long
 
     if ((b[4] & 0x0F) != 0x0F)

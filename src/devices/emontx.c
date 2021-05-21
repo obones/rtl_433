@@ -46,7 +46,7 @@ static int emontx_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Search for only 22 bits to cope with inverted frames and
     // the missing final preamble bit with RFM69 transmissions.
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos,
-                      preamble, 22)) < bitbuffer->bits_per_row[0]) {
+                      preamble, 22)) < bitbuffer_bits_per_row(bitbuffer)[0]) {
         int inverted = 0;
         unsigned pkt_pos;
         uint16_t crc;
@@ -84,7 +84,7 @@ static int emontx_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         }
 
         // Need enough data for a full packet (including postamble)
-        if (pkt_pos + sizeof(pkt)*8 > bitbuffer->bits_per_row[0])
+        if (pkt_pos + sizeof(pkt)*8 > bitbuffer_bits_per_row(bitbuffer)[0])
             break;
 
         // Extract the group even though we matched on it; the CRC

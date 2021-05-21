@@ -49,10 +49,10 @@ static int auriol_ahfl_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY; // no repeated row found
     }
 
-    if (bitbuffer->bits_per_row[row] != 42)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] != 42)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     /* Check fixed message values */
     if (((b[4]&0xF0) != 0x40) || ((b[3]&0x1) != 0x0)) {

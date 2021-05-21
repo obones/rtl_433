@@ -32,7 +32,7 @@ static int tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigne
 {
     data_t *data;
     unsigned int start_pos;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t *b;
     unsigned id;
     char id_str[9];
@@ -40,14 +40,16 @@ static int tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigne
     int crc;
 
     // skip the first 1 bit, i.e. raw "01" to get 72 bits
-    start_pos = bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 80);
+    start_pos = bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, packet_bits, 80);
     if (start_pos - bitpos < 144) {
+        bitbuffer_free(packet_bits);
         return 0;
     }
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
 
     crc = b[8];
     if (crc8(b, 8, 0x07, 0x80) != crc) {
+        bitbuffer_free(packet_bits);
         return 0;
     }
 
@@ -56,6 +58,8 @@ static int tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigne
     pressure1 = (b[4] & 0x7f) << 1 | b[5] >> 7;
     temp = (b[5] & 0x7f) << 1 | b[6] >> 7;
     pressure2 = b[7] ^ 0xff;
+
+    bitbuffer_free(packet_bits);
 
     if (pressure1 != pressure2) {
         if (decoder->verbose)
@@ -92,7 +96,7 @@ static int tpms_toyota_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 12)) + 156 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
         ret = tpms_toyota_decode(decoder, bitbuffer, 0, bitpos + 11);
         if (ret > 0)
             events += ret;

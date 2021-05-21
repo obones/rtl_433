@@ -59,18 +59,18 @@ static int thermopro_tp12_sensor_callback(r_device *decoder, bitbuffer_t *bitbuf
     // Update for TP08: same is true but only 2 rows.
     row = bitbuffer_find_repeated_row(
             bitbuffer,
-            (bitbuffer->num_rows > 5) ? 5 : 2,
+            (bitbuffer_num_rows(bitbuffer) > 5) ? 5 : 2,
             BITS_IN_VALID_ROW - 1); // allow 1 bit less to also match the last row
     if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
 
-    bytes = bitbuffer->bb[row];
+    bytes = bitbuffer_bb(bitbuffer)[row];
     if (!bytes[0] && !bytes[1] && !bytes[2] && !bytes[3]) {
         return DECODE_ABORT_EARLY; // reduce false positives
     }
 
-    if (bitbuffer->bits_per_row[row] != BITS_IN_VALID_ROW)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] != BITS_IN_VALID_ROW)
         return DECODE_ABORT_LENGTH;
 
     ic = lfsr_digest8_reflect(bytes, 4, 0x51, 0x04);

@@ -44,7 +44,7 @@ TODO: identify battery bits
 static int tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t *b;
     unsigned id;
     char id_str[7 + 1];
@@ -53,16 +53,18 @@ static int tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
     int temperature;
     char code_str[9 * 2 + 1];
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 88);
-    bitbuffer_invert(&packet_bits);
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, packet_bits, 88);
+    bitbuffer_invert(packet_bits);
 
-    if (packet_bits.bits_per_row[0] < 88) {
+    if (bitbuffer_bits_per_row(packet_bits)[0] < 88) {
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_SANITY;
     }
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
 
     /* Check for sync */
     if ((b[0]<<8 | b[1]) != 0xdd33) {
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_SANITY;
     }
 
@@ -70,6 +72,7 @@ static int tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
     uint16_t crc_calc = crc16(&b[2], 7, 0x8005, 0x0000);
     if ( ((b[9]<<8) | b[10]) != crc_calc) {
         fprintf(stderr, "CRC missmatch %04x vs %02x %02x\n", crc_calc, b[9], b[10]);
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_MIC;
     }
 
@@ -79,6 +82,8 @@ static int tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
     pressure    = b[7];
     sprintf(id_str, "%06x", id);
     sprintf(code_str, "%02x%02x%02x%02x%02x%02x%02x%02x%02x", b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10]);
+
+    bitbuffer_free(packet_bits);
 
     /* clang-format off */
     data = data_make(
@@ -107,7 +112,7 @@ static int tpms_jansite_solar_callback(r_device *decoder, bitbuffer_t *bitbuffer
     int events      = 0;
 
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 24)) + 80 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
 
         ret = tpms_jansite_solar_decode(decoder, bitbuffer, 0, bitpos);
         if (ret > 0)

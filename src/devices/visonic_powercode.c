@@ -61,7 +61,7 @@ static int visonic_powercode_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_LENGTH;
 
     // exit if incorrect number of bits in row or none
-    if (bitbuffer->bits_per_row[row] != 37)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] != 37)
         return DECODE_ABORT_LENGTH;
 
     // extract message, drop leading start bit, include trailing LRC nibble

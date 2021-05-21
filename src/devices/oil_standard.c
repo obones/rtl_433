@@ -52,14 +52,16 @@ static int oil_standard_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     uint16_t binding_countdown = 0;
     uint8_t flags;
     uint8_t alarm;
-    bitbuffer_t databits = {0};
+    bitbuffer_t* databits = bitbuffer_alloc();
 
-    bitpos = bitbuffer_manchester_decode(bitbuffer, row, bitpos, &databits, 41);
+    bitpos = bitbuffer_manchester_decode(bitbuffer, row, bitpos, databits, 41);
 
-    if (databits.bits_per_row[0] < 32 || databits.bits_per_row[0] > 40 || (databits.bb[0][4] & 0xfe) != 0)
+    if (bitbuffer_bits_per_row(databits)[0] < 32 || bitbuffer_bits_per_row(databits)[0] > 40 || (bitbuffer_bb(databits)[0][4] & 0xfe) != 0) {
+        bitbuffer_free(databits);
         return 0; // TODO: fix calling code to handle negative return values
+    }
 
-    b = databits.bb[0];
+    b = bitbuffer_bb(databits)[0];
 
     // The unit ID changes when you rebind by holding a magnet to the
     // sensor for long enough.
@@ -87,6 +89,8 @@ static int oil_standard_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
         // A depth reading of zero indicates no reading.
         depth = ((b[2] & 0x02) << 7) | b[3];
 
+    bitbuffer_free(databits);
+
     data = data_make(
             "model", "", DATA_STRING, _X("Oil-SonicStd","Oil Ultrasonic STANDARD"),
             "id", "", DATA_FORMAT, "%04x", DATA_INT, unit_id,
@@ -111,14 +115,14 @@ static int oil_standard_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, (uint8_t *)&preamble_pattern0, 16)) + 78 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
         events += oil_standard_decode(decoder, bitbuffer, 0, bitpos + 14);
         bitpos += 2;
     }
 
     bitpos = 0;
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, (uint8_t *)&preamble_pattern1, 16)) + 78 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
         events += oil_standard_decode(decoder, bitbuffer, 0, bitpos + 14);
         bitpos += 2;
     }

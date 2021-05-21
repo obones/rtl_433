@@ -23,9 +23,9 @@ static int ht680_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data;
     uint8_t b[5]; // 36 bits
 
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
-        if (bitbuffer->bits_per_row[row] != 41 || // Length of packet is 41 (36+5)
-                (bitbuffer->bb[row][0] & 0xf8) != 0xa8) // Sync is 10101xxx (5 bits)
+    for (int row = 0; row < bitbuffer_num_rows(bitbuffer); row++) {
+        if (bitbuffer_bits_per_row(bitbuffer)[row] != 41 || // Length of packet is 41 (36+5)
+                (bitbuffer_bb(bitbuffer)[row][0] & 0xf8) != 0xa8) // Sync is 10101xxx (5 bits)
         continue; // DECODE_ABORT_LENGTH
 
         // remove the 5 sync bits

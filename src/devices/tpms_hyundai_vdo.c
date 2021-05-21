@@ -43,7 +43,7 @@ Packet nibbles:
 static int tpms_hyundai_vdo_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t *b;
     int state;
     unsigned id;
@@ -55,20 +55,23 @@ static int tpms_hyundai_vdo_decode(r_device *decoder, bitbuffer_t *bitbuffer, un
     int maybe_battery;
     int crc;
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 80);
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, packet_bits, 80);
 
-    if (packet_bits.bits_per_row[0] < 80) {
+    if (bitbuffer_bits_per_row(packet_bits)[0] < 80) {
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_SANITY; // too short to be a whole packet
     }
 
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
 
-//  if (b[6] == 0 || b[7] == 0) {
+    //  if (b[6] == 0 || b[7] == 0) {
+//      bitbuffer_free(packet_bits);
 //      return DECODE_ABORT_EARLY; // pressure cannot really be 0, temperature is also probably not -50C
 //  }
 
     crc = b[9];
     if (crc8(b, 9, 0x07, 0xaa) != crc) {
+        bitbuffer_free(packet_bits);
         return 0;
     }
 
@@ -79,6 +82,8 @@ static int tpms_hyundai_vdo_decode(r_device *decoder, bitbuffer_t *bitbuffer, un
     pressure      = b[6];
     temperature   = b[7];
     maybe_battery = b[8];
+
+    bitbuffer_free(packet_bits);
 
     sprintf(id_str, "%08x", id);
 
@@ -114,7 +119,7 @@ static int tpms_hyundai_vdo_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 32)) + 80 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
         ret = tpms_hyundai_vdo_decode(decoder, bitbuffer, 0, bitpos + 32);
         if (ret > 0)
             events += ret;

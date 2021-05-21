@@ -35,8 +35,8 @@ static inline int bit(const uint8_t *bytes, unsigned bit)
  */
 unsigned ge_decode(bitbuffer_t *inbuf, unsigned row, unsigned start, bitbuffer_t *outbuf)
 {
-    uint8_t *bits = inbuf->bb[row];
-    unsigned int len = inbuf->bits_per_row[row];
+    uint8_t *bits = bitbuffer_bb(inbuf)[row];
+    unsigned int len = bitbuffer_bits_per_row(inbuf)[row];
     unsigned int ipos = start;
 
     while (ipos < len) {
@@ -67,12 +67,12 @@ unsigned ge_decode(bitbuffer_t *inbuf, unsigned row, unsigned start, bitbuffer_t
 static int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned start_pos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t device_id;
     uint8_t command;
 
-    ge_decode(bitbuffer, row, start_pos, &packet_bits);
-    //bitbuffer_print(&packet_bits);
+    ge_decode(bitbuffer, row, start_pos, packet_bits);
+    //bitbuffer_print(packet_bits);
 
     /* From http://www.deepdarc.com/2010/11/27/hacking-christmas-lights/
      * Decoded frame format is:
@@ -84,23 +84,30 @@ static int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, uns
      */
 
     // Frame should be 17 decoded bits (not including preamble)
-    if (packet_bits.bits_per_row[0] != 17)
+    if (bitbuffer_bits_per_row(packet_bits)[0] != 17) {
+        bitbuffer_free(packet_bits);
         return DECODE_ABORT_LENGTH;
+    }
 
     // First two bits must be 0
-    if (*packet_bits.bb[0] & 0xc0)
+    if (*bitbuffer_bb(packet_bits)[0] & 0xc0) {
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_SANITY;
+    }
 
     // Last bit must be 0
-    if (bit(packet_bits.bb[0], 16) != 0)
+    if (bit(bitbuffer_bb(packet_bits)[0], 16) != 0) {
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_SANITY;
+    }
 
     // Extract device ID
     // We want bits [2..8]. Since the first two bits are zero, we'll just take the entire first byte
-    device_id = *packet_bits.bb[0];
+    device_id = *bitbuffer_bb(packet_bits)[0];
 
     // Extract command from the second byte
-    bitbuffer_extract_bytes(&packet_bits, 0, 8, &command, 8);
+    bitbuffer_extract_bytes(packet_bits, 0, 8, &command, 8);
+    bitbuffer_free(packet_bits);
 
     char cmd[7];
     switch(command) {
@@ -137,7 +144,7 @@ static int ge_coloreffects_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Find a preamble with enough bits after it that it could be a complete packet
     // (if the device id and command were all zeros)
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, (uint8_t *)&preamble_pattern, 24)) + 57 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
         ret = ge_coloreffects_decode(decoder, bitbuffer, 0, bitpos + 24);
         if (ret > 0)
             events += ret;

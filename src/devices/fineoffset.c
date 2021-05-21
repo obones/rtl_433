@@ -64,7 +64,7 @@ http://lucsmall.com/2012/04/29/weather-station-hacking-part-2/
 */
 static int fineoffset_WH2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     uint8_t b[6] = {0};
     data_t *data;
 
@@ -75,24 +75,24 @@ static int fineoffset_WH2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     float temperature;
     uint8_t humidity;
 
-    if (bitbuffer->bits_per_row[0] == 48 &&
+    if (bitbuffer_bits_per_row(bitbuffer)[0] == 48 &&
             bb[0][0] == 0xFF) { // WH2
         bitbuffer_extract_bytes(bitbuffer, 0, 8, b, 40);
         model = _X("Fineoffset-WH2","Fine Offset Electronics, WH2 Temperature/Humidity sensor");
 
-    } else if (bitbuffer->bits_per_row[0] == 55 &&
+    } else if (bitbuffer_bits_per_row(bitbuffer)[0] == 55 &&
             bb[0][0] == 0xFE) { // WH2A
         bitbuffer_extract_bytes(bitbuffer, 0, 7, b, 48);
         model = _X("Fineoffset-WH2A","Fine Offset WH2A sensor");
 
-    } else if (bitbuffer->bits_per_row[0] == 47 &&
+    } else if (bitbuffer_bits_per_row(bitbuffer)[0] == 47 &&
             bb[0][0] == 0xFE) { // WH5
         bitbuffer_extract_bytes(bitbuffer, 0, 7, b, 40);
         model = _X("Fineoffset-WH5","Fine Offset WH5 sensor");
         if (decoder->decode_ctx) // don't care for the actual value
             model = "Rosenborg-66796";
 
-    } else if (bitbuffer->bits_per_row[0] == 49 &&
+    } else if (bitbuffer_bits_per_row(bitbuffer)[0] == 49 &&
             bb[0][0] == 0xFF && (bb[0][1]&0x80) == 0x80) { // Telldus
         bitbuffer_extract_bytes(bitbuffer, 0, 9, b, 40);
         model = _X("Fineoffset-TelldusProove","Telldus/Proove thermometer");
@@ -117,7 +117,7 @@ static int fineoffset_WH2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Nibble 5,6,7 contains 12 bits of temperature
     temp = ((b[1] & 0x0F) << 8) | b[2];
-    if (bitbuffer->bits_per_row[0] != 47 || decoder->decode_ctx) { // WH2, Telldus, WH2A
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 47 || decoder->decode_ctx) { // WH2, Telldus, WH2A
         // The temperature is signed magnitude and scaled by 10
         if (temp & 0x800) {
             temp &= 0x7FF; // remove sign bit
@@ -208,13 +208,13 @@ static int fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int type;
 
     // Validate package, WH24 nominal size is 196 bit periods, WH65b is 209 bit periods
-    if (bitbuffer->bits_per_row[0] < 190 || bitbuffer->bits_per_row[0] > 215) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 190 || bitbuffer_bits_per_row(bitbuffer)[0] > 215) {
         return DECODE_ABORT_LENGTH;
     }
 
     // Find a data package and extract data buffer
     bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof(preamble) * 8) + sizeof(preamble) * 8;
-    if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) { // Did not find a big enough package
+    if (bit_offset + sizeof(b) * 8 > bitbuffer_bits_per_row(bitbuffer)[0]) { // Did not find a big enough package
         if (decoder->verbose) {
             fprintf(stderr, "Fineoffset_WH24: short package. Header index: %u\n", bit_offset);
             bitbuffer_print(bitbuffer);
@@ -222,7 +222,7 @@ static int fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_LENGTH;
     }
     // Classification heuristics
-    if (bitbuffer->bits_per_row[0] - bit_offset - sizeof(b) * 8 < 8)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] - bit_offset - sizeof(b) * 8 < 8)
         if (bit_offset < 61)
             type = MODEL_WH24; // nominal 3 bits postamble
         else
@@ -408,9 +408,9 @@ static int fineoffset_WH0290_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned bit_offset;
 
     bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof(preamble) * 8) + sizeof(preamble) * 8;
-    if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) {  // Did not find a big enough package
+    if (bit_offset + sizeof(b) * 8 > bitbuffer_bits_per_row(bitbuffer)[0]) {  // Did not find a big enough package
         if (decoder->verbose)
-            bitbuffer_printf(bitbuffer, "Fineoffset_WH0290: short package. Row length: %u. Header index: %u\n", bitbuffer->bits_per_row[0], bit_offset);
+            bitbuffer_printf(bitbuffer, "Fineoffset_WH0290: short package. Row length: %u. Header index: %u\n", bitbuffer_bits_per_row(bitbuffer)[0], bit_offset);
         return DECODE_ABORT_LENGTH;
     }
     bitbuffer_extract_bytes(bitbuffer, 0, bit_offset, b, sizeof(b) * 8);
@@ -491,13 +491,13 @@ static int fineoffset_WH25_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned bit_offset;
 
     // Validate package
-    if (bitbuffer->bits_per_row[0] < 190) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 190) {
         return fineoffset_WH0290_callback(decoder, bitbuffer); // abort and try WH0290
-    } else if (bitbuffer->bits_per_row[0] < 440) {  // Nominal size is 488 bit periods
+    } else if (bitbuffer_bits_per_row(bitbuffer)[0] < 440) {  // Nominal size is 488 bit periods
         return fineoffset_WH24_callback(decoder, bitbuffer); // abort and try WH24, WH65B, HP1000
     }
 
-    if (bitbuffer->bits_per_row[0] > 510) { // WH32B has nominal size of 971 bit periods
+    if (bitbuffer_bits_per_row(bitbuffer)[0] > 510) { // WH32B has nominal size of 971 bit periods
         type = 32;
     }
 
@@ -505,7 +505,7 @@ static int fineoffset_WH25_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Normal index of WH25 is 367, and 123, 570 for WH32B
     // skip some bytes to find faster
     bit_offset = bitbuffer_search(bitbuffer, 0, 100, preamble, sizeof(preamble) * 8) + sizeof(preamble) * 8;
-    if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) {  // Did not find a big enough package
+    if (bit_offset + sizeof(b) * 8 > bitbuffer_bits_per_row(bitbuffer)[0]) {  // Did not find a big enough package
         if (decoder->verbose)
             bitbuffer_printf(bitbuffer, "Fineoffset_WH25: short package. Header index: %u\n", bit_offset);
         return DECODE_ABORT_LENGTH;
@@ -616,13 +616,13 @@ static int fineoffset_WH51_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned bit_offset;
 
     // Validate package
-    if (bitbuffer->bits_per_row[0] < 120) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 120) {
         return DECODE_ABORT_LENGTH;
     }
 
     // Find a data package and extract data payload
     bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof(preamble) * 8) + sizeof(preamble) * 8;
-    if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) {  // Did not find a big enough package
+    if (bit_offset + sizeof(b) * 8 > bitbuffer_bits_per_row(bitbuffer)[0]) {  // Did not find a big enough package
         if (decoder->verbose)
             bitbuffer_printf(bitbuffer, "Fineoffset_WH51: short package. Header index: %u\n", bit_offset);
         return DECODE_ABORT_LENGTH;
@@ -704,11 +704,11 @@ Format string:
 static int alecto_ws1200v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     uint8_t b[7];
 
     // Validate package
-    if (bitbuffer->bits_per_row[0] != 63 // Match exact length to avoid false positives
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 63 // Match exact length to avoid false positives
             || (bb[0][0] >> 1) != 0x7F   // Check preamble (7 bits)
             || (bb[0][1] >> 5) != 0x3)   // Check message type (4 bits)
         return DECODE_ABORT_LENGTH;
@@ -776,11 +776,11 @@ Format string:
 static int alecto_ws1200v2_dcf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     uint8_t b[11];
 
     // Validate package
-    if (bitbuffer->bits_per_row[0] != 95 // Match exact length to avoid false positives
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 95 // Match exact length to avoid false positives
             || (bb[0][0] >> 1) != 0x7F   // Check preamble (7 bits)
             || (bb[0][1] >> 1) != 0x52)   // Check message type (8 bits)
         return DECODE_ABORT_LENGTH;
@@ -859,11 +859,11 @@ Format string:
 static int alecto_ws1200v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     uint8_t b[11];
 
     // Validate package
-    if (bitbuffer->bits_per_row[0] != 95 // Match exact length to avoid false positives
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 95 // Match exact length to avoid false positives
             || (bb[0][0] >> 1) != 0x7F   // Check preamble (7 bits)
             || (bb[0][1] >> 5) != 0x3)   // Check message type (8 bits)
         return alecto_ws1200v2_dcf_callback(decoder, bitbuffer);
@@ -930,17 +930,17 @@ Data layout:
 static int fineoffset_WH0530_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
     uint8_t b[8];
 
     // try Alecto WS-1200 (v1, v2, DCF)
-    if (bitbuffer->bits_per_row[0] == 63)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] == 63)
         return alecto_ws1200v1_callback(decoder, bitbuffer);
-    if (bitbuffer->bits_per_row[0] == 95)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] == 95)
         return alecto_ws1200v2_callback(decoder, bitbuffer);
 
     // Validate package
-    if (bitbuffer->bits_per_row[0] != 71) // Match exact length to avoid false positives
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 71) // Match exact length to avoid false positives
         return DECODE_ABORT_LENGTH;
 
     if ((bb[0][0] >> 1) != 0x7F   // Check preamble (7 bits)

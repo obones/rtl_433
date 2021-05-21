@@ -59,11 +59,11 @@ static int lacrosse_r1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int raw_rain1, raw_rain2, msg_len;
     //float rain_mm;
 
-    if (bitbuffer->num_rows > 1) {
-        fprintf(stderr, "%s: Too many rows: %d\n", __func__, bitbuffer->num_rows);
+    if (bitbuffer_num_rows(bitbuffer) > 1) {
+        fprintf(stderr, "%s: Too many rows: %d\n", __func__, bitbuffer_num_rows(bitbuffer));
         return DECODE_FAIL_SANITY;
     }
-    msg_len = bitbuffer->bits_per_row[0];
+    msg_len = bitbuffer_bits_per_row(bitbuffer)[0];
     if (msg_len < 256) {
         if (decoder->verbose) {
             fprintf(stderr, "%s: Packet too short: %d bits\n", __func__, msg_len);

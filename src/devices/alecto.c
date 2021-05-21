@@ -113,12 +113,12 @@ static uint8_t bcd_decode8(uint8_t x)
 
 static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    bitrow_t *bb = bitbuffer->bb;
-    uint8_t *b = bitbuffer->bb[1];
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
+    uint8_t *b = bitbuffer_bb(bitbuffer)[1];
     int temp_raw, humidity;
     float temp_c;
     data_t *data;
-    unsigned bits = bitbuffer->bits_per_row[1];
+    unsigned bits = bitbuffer_bits_per_row(bitbuffer)[1];
 
     if (bits != 36)
         return DECODE_ABORT_LENGTH;

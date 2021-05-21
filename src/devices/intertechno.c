@@ -22,8 +22,8 @@ There is another type of remotes that have an ID prefix of 0x56 and slightly sho
 static int intertechno_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitrow_t *bb = bitbuffer->bb;
-    uint8_t *b = bitbuffer->bb[1];
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
+    uint8_t *b = bitbuffer_bb(bitbuffer)[1];
     char id_str[11];
     int slave;
     int master;

@@ -55,9 +55,9 @@ static int honeywell_wdb_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
-    bytes = bitbuffer->bb[row];
+    bytes = bitbuffer_bb(bitbuffer)[row];
 
-    if (bitbuffer->bits_per_row[row] != 48)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] != 48)
         return DECODE_ABORT_LENGTH;
 
     bitbuffer_invert(bitbuffer);

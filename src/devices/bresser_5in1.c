@@ -68,11 +68,11 @@ static int bresser_5in1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint16_t sensor_id;
     unsigned len = 0;
 
-    if (bitbuffer->num_rows != 1
-            || bitbuffer->bits_per_row[0] < 248
-            || bitbuffer->bits_per_row[0] > 440) {
+    if (bitbuffer_num_rows(bitbuffer) != 1
+            || bitbuffer_bits_per_row(bitbuffer)[0] < 248
+            || bitbuffer_bits_per_row(bitbuffer)[0] > 440) {
         if (decoder->verbose > 1) {
-            fprintf(stderr, "%s: bit_per_row %u out of range\n", __func__, bitbuffer->bits_per_row[0]);
+            fprintf(stderr, "%s: bit_per_row %u out of range\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         }
         return DECODE_ABORT_EARLY; // Unrecognized data
     }
@@ -80,11 +80,11 @@ static int bresser_5in1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0,
             preamble_pattern, sizeof (preamble_pattern) * 8);
 
-    if (start_pos == bitbuffer->bits_per_row[0]) {
+    if (start_pos == bitbuffer_bits_per_row(bitbuffer)[0]) {
         return DECODE_ABORT_LENGTH;
     }
     start_pos += sizeof (preamble_pattern) * 8;
-    len = bitbuffer->bits_per_row[0] - start_pos;
+    len = bitbuffer_bits_per_row(bitbuffer)[0] - start_pos;
     if (((len + 7) / 8) < sizeof (msg)) {
         if (decoder->verbose > 1) {
             fprintf(stderr, "%s: %u too short\n", __func__, len);

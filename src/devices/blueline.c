@@ -254,11 +254,11 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_invert(bitbuffer);
 
     // Look at each row we just received independently
-    for (row_index = 0; row_index < bitbuffer->num_rows; row_index++) {
-        current_row = bitbuffer->bb[row_index];
+    for (row_index = 0; row_index < bitbuffer_num_rows(bitbuffer); row_index++) {
+        current_row = bitbuffer_bb(bitbuffer)[row_index];
 
         // All valid rows will have a fixed length and start with the same byte
-        if ((bitbuffer->bits_per_row[row_index] != BLUELINE_BITLEN) || (current_row[0] != BLUELINE_STARTBYTE)) {
+        if ((bitbuffer_bits_per_row(bitbuffer)[row_index] != BLUELINE_BITLEN) || (current_row[0] != BLUELINE_STARTBYTE)) {
             if (DECODE_ABORT_LENGTH < most_applicable_failure) {
                 most_applicable_failure = DECODE_ABORT_LENGTH;
             }

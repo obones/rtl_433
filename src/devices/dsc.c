@@ -117,10 +117,10 @@ static int dsc_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         bitbuffer_printf(bitbuffer, "%s: ", __func__);
     }
 
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
-        if (decoder->verbose > 1 && bitbuffer->bits_per_row[row] > 0 ) {
+    for (int row = 0; row < bitbuffer_num_rows(bitbuffer); row++) {
+        if (decoder->verbose > 1 && bitbuffer_bits_per_row(bitbuffer)[row] > 0 ) {
             fprintf(stderr, "%s: row %d bit count %d\n", __func__,
-                    row, bitbuffer->bits_per_row[row]);
+                    row, bitbuffer_bits_per_row(bitbuffer)[row]);
         }
 
         // Number of bits in the packet should be 48 but due to the
@@ -130,16 +130,16 @@ static int dsc_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         //
         // If the limits are changed for some reason, the max number of bits
         // will need to be changed as there may be more zero bit padding
-        if (bitbuffer->bits_per_row[row] < 48 ||
-            bitbuffer->bits_per_row[row] > 70) {  // should be 48 at most
-            if (decoder->verbose > 1 && bitbuffer->bits_per_row[row] > 0) {
+        if (bitbuffer_bits_per_row(bitbuffer)[row] < 48 ||
+            bitbuffer_bits_per_row(bitbuffer)[row] > 70) {  // should be 48 at most
+            if (decoder->verbose > 1 && bitbuffer_bits_per_row(bitbuffer)[row] > 0) {
                 fprintf(stderr, "%s: row %d invalid bit count %d\n", __func__,
-                        row, bitbuffer->bits_per_row[row]);
+                        row, bitbuffer_bits_per_row(bitbuffer)[row]);
             }
             continue; // DECODE_ABORT_EARLY
         }
 
-        b = bitbuffer->bb[row];
+        b = bitbuffer_bb(bitbuffer)[row];
         // Validate Sync/Start bits == 1 and are in the right position
         if (!((b[0] & 0xF0) &&     // First 4 bits are start/sync bits
               (b[1] & 0x08) &&    // Another sync/start bit between

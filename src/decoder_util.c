@@ -184,29 +184,29 @@ void decoder_output_bitbuffer(r_device *decoder, bitbuffer_t const *bitbuffer, c
     char *row_bits[BITBUF_ROWS] = {0};
     unsigned i;
 
-    for (i = 0; i < bitbuffer->num_rows; i++) {
-        row_codes[i] = bitrow_asprint_code(bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
+    for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
+        row_codes[i] = bitrow_asprint_code(bitbuffer_const_bb(bitbuffer)[i], bitbuffer_bits_per_row(bitbuffer)[i]);
 
         if (decoder->verbose_bits) {
-            row_bits[i] = bitrow_asprint_bits(bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
+            row_bits[i] = bitrow_asprint_bits(bitbuffer_const_bb(bitbuffer)[i], bitbuffer_bits_per_row(bitbuffer)[i]);
         }
     }
 
     data = data_make(
             "msg", "", DATA_STRING, msg,
-            "num_rows", "", DATA_INT, bitbuffer->num_rows,
-            "codes", "", DATA_ARRAY, data_array(bitbuffer->num_rows, DATA_STRING, row_codes),
+            "num_rows", "", DATA_INT, bitbuffer_num_rows(bitbuffer),
+            "codes", "", DATA_ARRAY, data_array(bitbuffer_num_rows(bitbuffer), DATA_STRING, row_codes),
             NULL);
 
     if (decoder->verbose_bits) {
         data_append(data,
-                "bits", "", DATA_ARRAY, data_array(bitbuffer->num_rows, DATA_STRING, row_bits),
+                "bits", "", DATA_ARRAY, data_array(bitbuffer_num_rows(bitbuffer), DATA_STRING, row_bits),
                 NULL);
     }
 
     decoder_output_data(decoder, data);
 
-    for (i = 0; i < bitbuffer->num_rows; i++) {
+    for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
         free(row_codes[i]);
         free(row_bits[i]);
     }
@@ -220,33 +220,33 @@ void decoder_output_bitbuffer_array(r_device *decoder, bitbuffer_t const *bitbuf
     char row_bytes[BITBUF_COLS * 2 + 1];
     unsigned i;
 
-    for (i = 0; i < bitbuffer->num_rows; i++) {
+    for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
         row_bytes[0] = '\0';
         // print byte-wide
-        for (unsigned col = 0; col < (unsigned)(bitbuffer->bits_per_row[i] + 7) / 8; ++col) {
-            sprintf(&row_bytes[2 * col], "%02x", bitbuffer->bb[i][col]);
+        for (unsigned col = 0; col < (unsigned)(bitbuffer_bits_per_row(bitbuffer)[i] + 7) / 8; ++col) {
+            sprintf(&row_bytes[2 * col], "%02x", bitbuffer_const_bb(bitbuffer)[i][col]);
         }
         // remove last nibble if needed
-        row_bytes[2 * (bitbuffer->bits_per_row[i] + 3) / 8] = '\0';
+        row_bytes[2 * (bitbuffer_bits_per_row(bitbuffer)[i] + 3) / 8] = '\0';
 
         row_data[i] = data_make(
-                "len", "", DATA_INT, bitbuffer->bits_per_row[i],
+                "len", "", DATA_INT, bitbuffer_bits_per_row(bitbuffer)[i],
                 "data", "", DATA_STRING, row_bytes,
                 NULL);
 
         // a simpler representation for csv output
-        row_codes[i] = bitrow_asprint_code(bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
+        row_codes[i] = bitrow_asprint_code(bitbuffer_const_bb(bitbuffer)[i], bitbuffer_bits_per_row(bitbuffer)[i]);
     }
 
     data = data_make(
             "msg", "", DATA_STRING, msg,
-            "num_rows", "", DATA_INT, bitbuffer->num_rows,
-            "rows", "", DATA_ARRAY, data_array(bitbuffer->num_rows, DATA_DATA, row_data),
-            "codes", "", DATA_ARRAY, data_array(bitbuffer->num_rows, DATA_STRING, row_codes),
+            "num_rows", "", DATA_INT, bitbuffer_num_rows(bitbuffer),
+            "rows", "", DATA_ARRAY, data_array(bitbuffer_num_rows(bitbuffer), DATA_DATA, row_data),
+            "codes", "", DATA_ARRAY, data_array(bitbuffer_num_rows(bitbuffer), DATA_STRING, row_codes),
             NULL);
     decoder_output_data(decoder, data);
 
-    for (i = 0; i < bitbuffer->num_rows; i++) {
+    for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
         free(row_codes[i]);
     }
 }

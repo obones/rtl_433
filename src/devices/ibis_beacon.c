@@ -35,7 +35,7 @@ static int ibis_beacon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     char code_str[63];
 
     // 224 bits data + 12 bits preamble
-    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[0] < 232 || bitbuffer->bits_per_row[0] > 250) {
+    if (bitbuffer_num_rows(bitbuffer) != 1 || bitbuffer_bits_per_row(bitbuffer)[0] < 232 || bitbuffer_bits_per_row(bitbuffer)[0] > 250) {
         return DECODE_ABORT_LENGTH; // Unrecognized data
     }
 
@@ -44,7 +44,7 @@ static int ibis_beacon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY; // short buffer or preamble not found
     }
     pos += 8; // skip preamble
-    len = bitbuffer->bits_per_row[0] - pos;
+    len = bitbuffer_bits_per_row(bitbuffer)[0] - pos;
     // we want 28 bytes (224 bits)
     if (len < 224) {
         return DECODE_ABORT_LENGTH; // short buffer

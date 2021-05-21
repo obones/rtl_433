@@ -32,7 +32,7 @@ Data layout (nibbles):
 static int tpms_jansite_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t *b;
     unsigned id;
     char id_str[7 + 1];
@@ -41,13 +41,14 @@ static int tpms_jansite_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     int temperature;
     char code_str[7 * 2 + 1];
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 56);
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, packet_bits, 56);
 
-    if (packet_bits.bits_per_row[0] < 56) {
+    if (bitbuffer_bits_per_row(packet_bits)[0] < 56) {
+        bitbuffer_free(packet_bits);
         return DECODE_FAIL_SANITY;
-        // fprintf(stderr, "%s packet_bits.bits_per_row = %d\n", __func__, packet_bits.bits_per_row[0]);
+        // fprintf(stderr, "%s bitbuffer_bits_per_row(packet_bits) = %d\n", __func__, bitbuffer_bits_per_row(packet_bits)[0]);
     }
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
 
     // TODO: validate checksum
 
@@ -58,6 +59,8 @@ static int tpms_jansite_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     //crc         = b[6];
     sprintf(id_str, "%07x", id);
     sprintf(code_str, "%02x%02x%02x%02x%02x%02x%02x", b[0], b[1], b[2], b[3], b[4], b[5], b[6]); // figure out the checksum
+
+    bitbuffer_free(packet_bits);
 
     /* clang-format off */
     data = data_make(
@@ -91,7 +94,7 @@ static int tpms_jansite_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 24)) + 80 <=
-            bitbuffer->bits_per_row[0]) {
+            bitbuffer_bits_per_row(bitbuffer)[0]) {
         ret = tpms_jansite_decode(decoder, bitbuffer, 0, bitpos + 24);
         if (ret > 0)
             events += ret;

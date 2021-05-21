@@ -29,7 +29,7 @@ rtl_433 -R 0 -X 'n=name,m=OOK_PWM,s=370,l=772,r=14000,g=4000,t=152,y=0,preamble=
 static int hcs200_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[0];
     int i;
     uint32_t encrypted, serial, encrypted_rev, serial_rev;
     char encrypted_str[9];
@@ -38,7 +38,7 @@ static int hcs200_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     char serial_rev_str[9];
 
     /* Reject codes of wrong length */
-    if (78 != bitbuffer->bits_per_row[0])
+    if (78 != bitbuffer_bits_per_row(bitbuffer)[0])
         return DECODE_ABORT_LENGTH;
 
     /* Reject codes with an incorrect preamble (expected 0xfff) */

@@ -40,14 +40,14 @@ static int opus_xt300_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int channel, temp, moisture;
     data_t *data;
 
-    for (row = 0; row < bitbuffer->num_rows; row++) {
+    for (row = 0; row < bitbuffer_num_rows(bitbuffer); row++) {
 
-        if (bitbuffer->bits_per_row[row] != 48) {
+        if (bitbuffer_bits_per_row(bitbuffer)[row] != 48) {
             fail_code = DECODE_ABORT_LENGTH;
             continue;
         }
 
-        b = bitbuffer->bb[row];
+        b = bitbuffer_bb(bitbuffer)[row];
 
         if (!b[0] && !b[1] && !b[2] && !b[3]) {
             if (decoder->verbose > 1) {

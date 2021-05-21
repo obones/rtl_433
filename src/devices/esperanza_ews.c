@@ -56,15 +56,15 @@ static int esperanza_ews_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data;
 
     // require two leading sync pulses
-    if (bitbuffer->bits_per_row[0] != 0 || bitbuffer->bits_per_row[1] != 0)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 0 || bitbuffer_bits_per_row(bitbuffer)[1] != 0)
         return DECODE_FAIL_SANITY;
 
-    if (bitbuffer->num_rows != 14)
+    if (bitbuffer_num_rows(bitbuffer) != 14)
         return DECODE_ABORT_LENGTH;
 
-    for (int row = 2; row < bitbuffer->num_rows - 3; row += 2) {
-        if (memcmp(bitbuffer->bb[row], bitbuffer->bb[row + 2], sizeof(bitbuffer->bb[row])) != 0
-                || bitbuffer->bits_per_row[row] != 42)
+    for (int row = 2; row < bitbuffer_num_rows(bitbuffer) - 3; row += 2) {
+        if (memcmp(bitbuffer_bb(bitbuffer)[row], bitbuffer_bb(bitbuffer)[row + 2], sizeof(bitbuffer_bb(bitbuffer)[row])) != 0
+                || bitbuffer_bits_per_row(bitbuffer)[row] != 42)
             return DECODE_FAIL_SANITY;
     }
     int r = 2;

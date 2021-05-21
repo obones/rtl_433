@@ -48,7 +48,7 @@ enum sensortypes { HIDEKI_UNKNOWN, HIDEKI_TEMP, HIDEKI_TS04, HIDEKI_WIND, HIDEKI
 static int hideki_ts04_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    uint8_t *b = bitbuffer->bb[0]; // TODO: handle the 3 row, need change in PULSE_CLOCK decoding
+    uint8_t *b = bitbuffer_bb(bitbuffer)[0]; // TODO: handle the 3 row, need change in PULSE_CLOCK decoding
     uint8_t packet[HIDEKI_MAX_BYTES_PER_ROW];
     int sensortype, chk;
     int channel, rc, battery_ok;
@@ -56,7 +56,7 @@ static int hideki_ts04_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int wind_speed, gust_speed, wind_direction, wind_approach;
 
     // Expect 8, 9, 10, or 14 unstuffed bytes
-    int unstuffed_len = bitbuffer->bits_per_row[0] / 9;
+    int unstuffed_len = bitbuffer_bits_per_row(bitbuffer)[0] / 9;
     if (unstuffed_len == 14)
         sensortype = HIDEKI_WIND;
     else if (unstuffed_len == 10)

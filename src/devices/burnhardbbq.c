@@ -49,13 +49,13 @@ static int burnhardbbq_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // All three rows contain the same information. Return on first decoded row.
     int ret = 0;
-    for (int i = 0; i < bitbuffer->num_rows; ++i) {
+    for (int i = 0; i < bitbuffer_num_rows(bitbuffer); ++i) {
         // A row typically has 81 bits, but the last is just a coding artefact.
-        if (bitbuffer->bits_per_row[i] < 80 || bitbuffer->bits_per_row[i] > 81) {
+        if (bitbuffer_bits_per_row(bitbuffer)[i] < 80 || bitbuffer_bits_per_row(bitbuffer)[i] > 81) {
             ret = DECODE_ABORT_LENGTH;
             continue;
         }
-        b = bitbuffer->bb[i];
+        b = bitbuffer_bb(bitbuffer)[i];
 
         // reduce false positives
         if (b[0] == 0 && b[9] == 0) {

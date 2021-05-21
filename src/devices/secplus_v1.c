@@ -113,10 +113,10 @@ static int find_next(bitbuffer_t *bitbuffer, int cur_index)
     int search_index_1;
     int search_index_2;
 
-    if (cur_index == 0 && ((bitbuffer->bb[0][0] & 0xf0) == 0x10 || (bitbuffer->bb[0][0] & 0xf0) == 0x70))
+    if (cur_index == 0 && ((bitbuffer_bb(bitbuffer)[0][0] & 0xf0) == 0x10 || (bitbuffer_bb(bitbuffer)[0][0] & 0xf0) == 0x70))
         return 0;
 
-    if (cur_index == 0 && ((bitbuffer->bb[0][0] & 0xE0) == 0xe0 || (bitbuffer->bb[0][0] & 0xc0) == 0x80))
+    if (cur_index == 0 && ((bitbuffer_bb(bitbuffer)[0][0] & 0xE0) == 0xe0 || (bitbuffer_bb(bitbuffer)[0][0] & 0xc0) == 0x80))
         return 0;
 
     search_index_1 = bitbuffer_search(bitbuffer, 0, cur_index, preamble_1, 8);
@@ -143,18 +143,18 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int search_index;
 
     // the max of 130 is just a guess
-    if (bitbuffer->bits_per_row[0] < 84 || bitbuffer->bits_per_row[0] > 130) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 84 || bitbuffer_bits_per_row(bitbuffer)[0] > 130) {
         if (decoder->verbose)
             (void)fprintf(stderr, "%s:return  DECODE_ABORT_LENGTH\n", __func__);
         return DECODE_ABORT_LENGTH;
     }
 
     if (decoder->verbose) {
-        (void)fprintf(stderr, "%s : num rows = %u len %u\n", __func__, bitbuffer->num_rows, bitbuffer->bits_per_row[0]);
+        (void)fprintf(stderr, "%s : num rows = %u len %u\n", __func__, bitbuffer_num_rows(bitbuffer), bitbuffer_bits_per_row(bitbuffer)[0]);
     }
 
     search_index = 0;
-    while (search_index < bitbuffer->bits_per_row[0] && status == 0) {
+    while (search_index < bitbuffer_bits_per_row(bitbuffer)[0] && status == 0) {
         int dr            = 0;
         uint8_t buffy[44] = {0}; // actually we expect 22 bytes on valid decode
         uint8_t buffi[11] = {0};
@@ -162,10 +162,10 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         search_index = find_next(bitbuffer, search_index);
 
         if (decoder->verbose > 1)
-            fprintf(stderr, "%s: find_next return : bits_per_row - search_index = %d\n", __func__, bitbuffer->bits_per_row[0] - search_index);
+            fprintf(stderr, "%s: find_next return : bits_per_row - search_index = %d\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0] - search_index);
 
         // nothing found
-        if (search_index == -1 || (search_index + 84) > bitbuffer->bits_per_row[0]) {
+        if (search_index == -1 || (search_index + 84) > bitbuffer_bits_per_row(bitbuffer)[0]) {
             break;
         }
 

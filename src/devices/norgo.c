@@ -116,7 +116,7 @@ static uint8_t calc_checksum(uint8_t *data, uint8_t datalen)
 static int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[0];
 
     int device_id;
     int channel;
@@ -127,13 +127,13 @@ static int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int checksum;
     int calc_chk;
 
-    if (bitbuffer->bits_per_row[0] != 56
-            && bitbuffer->bits_per_row[0] != 72
-            && bitbuffer->bits_per_row[0] != 55
-            && bitbuffer->bits_per_row[0] != 71) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 56
+            && bitbuffer_bits_per_row(bitbuffer)[0] != 72
+            && bitbuffer_bits_per_row(bitbuffer)[0] != 55
+            && bitbuffer_bits_per_row(bitbuffer)[0] != 71) {
         if (decoder->verbose)
             fprintf(stderr, "%s: wrong size of bit per row %d\n",
-                    __func__, bitbuffer->bits_per_row[0]);
+                    __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         return DECODE_ABORT_LENGTH;
     }
 
@@ -143,16 +143,16 @@ static int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    int xor = xor_bytes(b + 1, (bitbuffer->bits_per_row[0] - 15) / 8);
+    int xor = xor_bytes(b + 1, (bitbuffer_bits_per_row(bitbuffer)[0] - 15) / 8);
     if (xor != 0xff) { // before invert 0 is ff
         if (decoder->verbose)
-            bitrow_printf(b, bitbuffer->bits_per_row[0], "%s: XOR fail (%02x): ",
+            bitrow_printf(b, bitbuffer_bits_per_row(bitbuffer)[0], "%s: XOR fail (%02x): ",
                     __func__, xor);
         return DECODE_FAIL_MIC;
     }
 
     bitbuffer_invert(bitbuffer); // inverted OOK_PULSE_DMC modulation
-    reflect_bytes(b, (bitbuffer->bits_per_row[0] + 1) / 8);
+    reflect_bytes(b, (bitbuffer_bits_per_row(bitbuffer)[0] + 1) / 8);
 
     device_id = ((b[1] & 0xF0) >> 4) | ((b[2] & 0x0f) << 4);
     channel   = ((b[1] & 0x0e) >> 1) + 1;

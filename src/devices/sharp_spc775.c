@@ -48,19 +48,19 @@ static int sharp_spc775_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // Invert data for processing
     bitbuffer_invert(bitbuffer);
 
-    for (i = 0; i < bitbuffer->num_rows; i++) {
-        if (bitbuffer->bits_per_row[i] >= 48) {
+    for (i = 0; i < bitbuffer_num_rows(bitbuffer); i++) {
+        if (bitbuffer_bits_per_row(bitbuffer)[i] >= 48) {
             length_match++;
             unsigned pos = bitbuffer_search(bitbuffer, i, 0, preamble, sizeof(preamble)*8);
-            if (pos < bitbuffer->bits_per_row[i]) {
+            if (pos < bitbuffer_bits_per_row(bitbuffer)[i]) {
                 if (r < 0)
                     r = i;
                 preamble_match++;
                 pos += sizeof(preamble)*8;
-                unsigned len = bitbuffer->bits_per_row[i] - pos;
+                unsigned len = bitbuffer_bits_per_row(bitbuffer)[i] - pos;
                 bitbuffer_extract_bytes(bitbuffer, i, pos, tmp, len);
-                memcpy(bitbuffer->bb[i], tmp, (len + 7) / 8);
-                bitbuffer->bits_per_row[i] = len;
+                memcpy(bitbuffer_bb(bitbuffer)[i], tmp, (len + 7) / 8);
+                bitbuffer_set_bits_per_row(bitbuffer, i, len);
             }
         }
     }
@@ -70,7 +70,7 @@ static int sharp_spc775_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (!preamble_match)
         return DECODE_FAIL_SANITY;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
 
     id          = b[0];                                                // changes on each power cycle
     battery_low = (b[1] & 0x80);                                       // High bit is low battery indicator

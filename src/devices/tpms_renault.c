@@ -29,7 +29,7 @@ Packet nibbles:
 static int tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitbuffer_t* packet_bits = bitbuffer_alloc();
     uint8_t *b;
     int flags;
     char flags_str[3];
@@ -39,15 +39,17 @@ static int tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     double pressure_kpa;
     char code_str[5];
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 160);
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, packet_bits, 160);
     // require 72 data bits
-    if (packet_bits.bits_per_row[0] < 72) {
+    if (bitbuffer_bits_per_row(packet_bits)[0] < 72) {
+        bitbuffer_free(packet_bits);
         return 0;
     }
-    b = packet_bits.bb[0];
+    b = bitbuffer_bb(packet_bits)[0];
 
     // 0x83; 0x107 FOP-8; ATM-8; CRC-8P
     if (crc8(b, 8, 0x07, 0x00) != b[8]) {
+        bitbuffer_free(packet_bits);
         return 0;
     }
 
@@ -62,6 +64,8 @@ static int tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     temp_c       = b[2] - 30;
     unknown      = b[7] << 8 | b[6]; // little-endian, fixed 0xffff?
     sprintf(code_str, "%04x", unknown);
+
+    bitbuffer_free(packet_bits);
 
     data = data_make(
             "model",            "", DATA_STRING, "Renault",
@@ -90,12 +94,12 @@ static int tpms_renault_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     bitbuffer_invert(bitbuffer);
 
-    for (row = 0; row < bitbuffer->num_rows; ++row) {
+    for (row = 0; row < bitbuffer_num_rows(bitbuffer); ++row) {
         bitpos = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
         while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos,
                 preamble_pattern, 16)) + 160 <=
-                bitbuffer->bits_per_row[row]) {
+                bitbuffer_bits_per_row(bitbuffer)[row]) {
             ret = tpms_renault_decode(decoder, bitbuffer, row, bitpos + 16);
             if (ret > 0)
                 events += ret;

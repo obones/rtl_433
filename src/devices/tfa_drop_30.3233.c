@@ -134,11 +134,11 @@ static int tfa_drop_303233_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     row_index = bitbuffer_find_repeated_row(bitbuffer, TFA_DROP_MINREPEATS,
             TFA_DROP_BITLEN);
-    if (row_index < 0 || bitbuffer->bits_per_row[row_index] > TFA_DROP_BITLEN + 16) {
+    if (row_index < 0 || bitbuffer_bits_per_row(bitbuffer)[row_index] > TFA_DROP_BITLEN + 16) {
         return DECODE_ABORT_LENGTH;
     }
 
-    row_data = bitbuffer->bb[row_index];
+    row_data = bitbuffer_bb(bitbuffer)[row_index];
 
     /*
      * Reject rows that don't start with the correct start byte.

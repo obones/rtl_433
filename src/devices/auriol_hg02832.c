@@ -45,14 +45,14 @@ static int auriol_hg02832_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int temp_raw;
     float temp_c;
 
-    if (bitbuffer->num_rows != 2)
+    if (bitbuffer_num_rows(bitbuffer) != 2)
         return DECODE_ABORT_EARLY;
-    if (bitbuffer->bits_per_row[0] != 1 || bitbuffer->bits_per_row[1] != 40)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 1 || bitbuffer_bits_per_row(bitbuffer)[1] != 40)
         return DECODE_ABORT_LENGTH;
 
     bitbuffer_invert(bitbuffer);
 
-    b = bitbuffer->bb[1];
+    b = bitbuffer_bb(bitbuffer)[1];
 
     // They tried to implement CRC-8 poly 0x31, but (accidentally?) reset the key every new byte.
     // (equivalent key stream is 7a 3d 86 43 b9 c4 62 31 repeated 4 times.)

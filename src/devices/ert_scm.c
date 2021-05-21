@@ -54,10 +54,10 @@ static int ert_scm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint32_t consumption_data, ert_id;
     data_t *data;
 
-    if (bitbuffer->bits_per_row[0] != 96)
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 96)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[0];
+    b = bitbuffer_bb(bitbuffer)[0];
 
     // No need to decode/extract values for simple test
     // check id tamper type crc  value not all zero'ed

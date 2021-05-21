@@ -34,11 +34,11 @@ static int oregon_scientific_sl109h_callback(r_device *decoder, bitbuffer_t *bit
     int status;
     uint8_t id;
 
-    for (int row_index = 0; row_index < bitbuffer->num_rows; row_index++) {
-        if (bitbuffer->bits_per_row[row_index] != 38) // expected length is 38 bit
+    for (int row_index = 0; row_index < bitbuffer_num_rows(bitbuffer); row_index++) {
+        if (bitbuffer_bits_per_row(bitbuffer)[row_index] != 38) // expected length is 38 bit
             continue; // DECODE_ABORT_LENGTH
 
-        msg = bitbuffer->bb[row_index];
+        msg = bitbuffer_bb(bitbuffer)[row_index];
 
         // No need to decode/extract values for simple test
         // check id channel temperature humidity value not zero

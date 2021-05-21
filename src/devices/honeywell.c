@@ -61,13 +61,13 @@ static int honeywell_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     int battery_low;
 
     row = 0; // we expect a single row only. reduce collisions
-    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[row] < 60)
+    if (bitbuffer_num_rows(bitbuffer) != 1 || bitbuffer_bits_per_row(bitbuffer)[row] < 60)
         return DECODE_ABORT_LENGTH;
 
     bitbuffer_invert(bitbuffer);
 
     pos = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 12) + 12;
-    len = bitbuffer->bits_per_row[row] - pos;
+    len = bitbuffer_bits_per_row(bitbuffer)[row] - pos;
     if (len < 48)
         return DECODE_ABORT_LENGTH;
     bitbuffer_extract_bytes(bitbuffer, row, pos, b, 80);

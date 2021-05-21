@@ -38,10 +38,10 @@ static int kw9015b_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[row] > 36)
+    if (bitbuffer_bits_per_row(bitbuffer)[row] > 36)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[row];
+    b = bitbuffer_bb(bitbuffer)[row];
 
     device   = reverse8(b[0]);
     temp_raw = (int16_t)((reverse8(b[2]) << 8) | (reverse8(b[1]) & 0xf0)); // sign-extend

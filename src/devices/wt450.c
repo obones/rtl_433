@@ -57,7 +57,7 @@ every 60 seconds 3 packets.
 
 static int wt450_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[0];
     uint8_t humidity;
     uint8_t temp_whole;
     uint8_t temp_fraction;
@@ -69,10 +69,10 @@ static int wt450_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t parity;
     data_t *data;
 
-    if (bitbuffer->bits_per_row[0] != 36) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] != 36) {
         if (decoder->verbose)
             fprintf(stderr, "wt450_callback: wrong size of bit per row %d\n",
-                    bitbuffer->bits_per_row[0]);
+                    bitbuffer_bits_per_row(bitbuffer)[0]);
         return DECODE_ABORT_LENGTH;
     }
 

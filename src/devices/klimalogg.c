@@ -58,12 +58,12 @@ static int klimalogg_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     char temperature_str[10] = {0};
     data_t *data;
 
-    if (bitbuffer->bits_per_row[0] < 12*8) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 12*8) {
         return DECODE_ABORT_LENGTH;
     }
 
     bit_offset = bitbuffer_search(bitbuffer, 0, 0, KLIMA_PREAMBLE, sizeof(KLIMA_PREAMBLE)*8);
-    if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) {
+    if (bit_offset + sizeof(b) * 8 > bitbuffer_bits_per_row(bitbuffer)[0]) {
         return DECODE_ABORT_LENGTH;
     }
 

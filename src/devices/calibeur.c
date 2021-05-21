@@ -51,7 +51,7 @@ static int calibeur_rf104_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t ID;
     float temperature;
     float humidity;
-    bitrow_t *bb = bitbuffer->bb;
+    bitrow_t *bb = bitbuffer_bb(bitbuffer);
 
     // row [0] is empty due to sync bit
     // No need to decode/extract values for simple test
@@ -66,7 +66,7 @@ static int calibeur_rf104_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     bitbuffer_invert(bitbuffer);
     // Validate package (row [0] is empty due to sync bit)
-    int valid = (bitbuffer->bits_per_row[1] == 21)  // Don't waste time on a long/short package
+    int valid = (bitbuffer_bits_per_row(bitbuffer)[1] == 21)  // Don't waste time on a long/short package
         && (crc8(bb[1], 3, 0x80, 0) != 0)           // It should be odd parity
         && (memcmp(bb[1], bb[2], 3) == 0);          // We want at least two messages in a row
 

@@ -24,7 +24,7 @@ static int quhwa_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (r < 0)
         return DECODE_ABORT_EARLY;
 
-    uint8_t *b = bitbuffer->bb[r];
+    uint8_t *b = bitbuffer_bb(bitbuffer)[r];
 
     // No need to decode/extract values for simple test
     if (!b[0] && !b[1] && !b[2]) {
@@ -38,7 +38,7 @@ static int quhwa_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     b[1] = ~b[1];
     b[2] = ~b[2];
 
-    if (bitbuffer->bits_per_row[r] != 18
+    if (bitbuffer_bits_per_row(bitbuffer)[r] != 18
             || (b[1] & 0x03) != 0x03
             || (b[2] & 0xC0) != 0xC0)
         return DECODE_ABORT_LENGTH;

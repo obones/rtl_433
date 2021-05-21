@@ -62,26 +62,26 @@ static int lacrosse_wr1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     float speed_kmh;
     // float rain_mm;
 
-    if (bitbuffer->bits_per_row[0] < 120) {
+    if (bitbuffer_bits_per_row(bitbuffer)[0] < 120) {
         if (decoder->verbose) {
-            fprintf(stderr, "%s: Packet too short: %d bits\n", __func__, bitbuffer->bits_per_row[0]);
+            fprintf(stderr, "%s: Packet too short: %d bits\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         }
         return DECODE_ABORT_LENGTH;
-    } else if (bitbuffer->bits_per_row[0] > 156) {
+    } else if (bitbuffer_bits_per_row(bitbuffer)[0] > 156) {
         if (decoder->verbose) {
-            fprintf(stderr, "%s: Packet too long: %d bits\n", __func__, bitbuffer->bits_per_row[0]);
+            fprintf(stderr, "%s: Packet too long: %d bits\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         }
         return DECODE_ABORT_LENGTH;
     } else {
         if (decoder->verbose) {
-           fprintf(stderr, "%s: packet length: %d\n", __func__, bitbuffer->bits_per_row[0]);
+           fprintf(stderr, "%s: packet length: %d\n", __func__, bitbuffer_bits_per_row(bitbuffer)[0]);
         }
     }
 
     offset = bitbuffer_search(bitbuffer, 0, 0,
             preamble_pattern, sizeof(preamble_pattern) * 8);
 
-    if (offset >= bitbuffer->bits_per_row[0]) {
+    if (offset >= bitbuffer_bits_per_row(bitbuffer)[0]) {
         if (decoder->verbose) {
             fprintf(stderr, "%s: Sync word not found\n", __func__);
         }

@@ -69,17 +69,17 @@ static int x10_sec_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t tamper = 0;                  /* tamper alarm indicator   */
     uint8_t parity = 0;                  /* for CRC calculation      */
 
-    if (bitbuffer->num_rows != 2)
+    if (bitbuffer_num_rows(bitbuffer) != 2)
         return DECODE_ABORT_EARLY;
 
     /* First row should be sync, second row should be 41 bit message */
-    if (bitbuffer->bits_per_row[1] < 41) {
+    if (bitbuffer_bits_per_row(bitbuffer)[1] < 41) {
         if (decoder->verbose)
-            fprintf(stderr, "X10SEC: DECODE_ABORT_LENGTH, Received message length=%i\n", bitbuffer->bits_per_row[1]);
+            fprintf(stderr, "X10SEC: DECODE_ABORT_LENGTH, Received message length=%i\n", bitbuffer_bits_per_row(bitbuffer)[1]);
         return DECODE_ABORT_LENGTH;
     }
 
-    b = bitbuffer->bb[1];
+    b = bitbuffer_bb(bitbuffer)[1];
 
     /* validate what we received */
     if ((b[0] ^ b[1]) != 0x0f || (b[2] ^ b[3]) != 0xff) {

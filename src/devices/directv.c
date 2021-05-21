@@ -294,7 +294,7 @@ static int directv_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // For now, we'll decode the signal in the bitbuffer assuming it is only one row.
 
     r = 0;
-    bit_len = bitbuffer->bits_per_row[r];
+    bit_len = bitbuffer_bits_per_row(bitbuffer)[r];
 
     if ((bit_len < ROW_BITLEN_MIN) || (bit_len > ROW_BITLEN_MAX)) {
         if (decoder->verbose >= 2) {

@@ -58,11 +58,11 @@ static int holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data;
     uint8_t b[24];
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer_num_rows(bitbuffer) != 1) {
         return DECODE_ABORT_EARLY;
     }
 
-    unsigned bits = bitbuffer->bits_per_row[0];
+    unsigned bits = bitbuffer_bits_per_row(bitbuffer)[0];
 
     // FSK sometimes decodes an extra bit at the start
     // and likely extra 2-4 bits at the end
@@ -72,7 +72,7 @@ static int holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     unsigned offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof (preamble) * 8);
-    if (offset + 192 > bitbuffer->bits_per_row[0]) {
+    if (offset + 192 > bitbuffer_bits_per_row(bitbuffer)[0]) {
         return DECODE_ABORT_EARLY;
     }
     bitbuffer_extract_bytes(bitbuffer, 0, offset, b, 192);
@@ -166,10 +166,10 @@ static int holman_ws5029pwm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // and validated prior to inverting the buffer. Invert
     // only if we have a valid row to process.
     int r = bitbuffer_find_repeated_row(bitbuffer, 3, 96);
-    if (r < 0 || bitbuffer->bits_per_row[r] != 96)
+    if (r < 0 || bitbuffer_bits_per_row(bitbuffer)[r] != 96)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer_bb(bitbuffer)[r];
 
     // Test for preamble / device code
     if (memcmp(b, preamble, 3))
