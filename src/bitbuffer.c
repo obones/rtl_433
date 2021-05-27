@@ -33,42 +33,7 @@ void bitbuffer_add_bit(bitbuffer_t *bits, int bit)
         fprintf(stderr, "%s: Warning: row length limit (%u bits) reached\n", __func__, UINT16_MAX);
     }
 
-    uint16_t col_index = bits->bits_per_row[bits->num_rows - 1] / 8;
-    uint16_t bit_index = bits->bits_per_row[bits->num_rows - 1] % 8;
-    if (bits->bits_per_row[bits->num_rows - 1] > 0
-            && bits->bits_per_row[bits->num_rows - 1] % (BITBUF_COLS * 8) == 0) {
-        // spill into next row
-        // fprintf(stderr, "%s: row spill [%d] to %d (%d)\n", __func__, bits->num_rows - 1, col_index, bits->free_row);
-        if (bits->free_row == BITBUF_ROWS - 1) {
-            //print_logf(LOG_WARNING, __func__, "Warning: row count limit (%d rows) reached", BITBUF_ROWS);
-            fprintf(stderr, "%s: Warning: row count limit (%d rows) reached\n", __func__, BITBUF_ROWS);
-        }
-        if (bits->free_row < BITBUF_ROWS) {
-            bits->free_row++;
-        }
-        else {
-            // fprintf(stderr, "%s: Could not add more rows\n", __func__);
-            return;
-        }
-    }
-    uint8_t *b = bits->bb[bits->num_rows - 1];
-    b[col_index] |= (bit << (7 - bit_index));
-    bits->bits_per_row[bits->num_rows - 1]++;
-
-/*
-    // preamble compression
-    if (bits->bits_per_row[bits->num_rows - 1] == 60 * 8) {
-        uint8_t *b = bits->bb[bits->num_rows - 1];
-        for (int i = 21; i < 60; ++i) {
-            if (b[20] != b[i]) {
-                return;
-            }
-        }
-        // fprintf(stderr, "%s: preamble compression\n", __func__);
-        memset(&b[30], 0, 30);
-        bits->bits_per_row[bits->num_rows - 1] = 30 * 8;
-    }
-*/
+    bitrow_add_bit(bits->bb[bits->num_rows - 1], &bits->bits_per_row[bits->num_rows - 1], bit);
 }
 
 /// Set the width of the current (last) row by expanding or truncating as needed.
@@ -131,16 +96,7 @@ void bitbuffer_add_sync(bitbuffer_t *bits)
 void bitbuffer_invert(bitbuffer_t *bits)
 {
     for (unsigned row = 0; row < bits->num_rows; ++row) {
-        if (bits->bits_per_row[row] > 0) {
-            uint8_t *b = bits->bb[row];
-
-            const unsigned last_col  = (bits->bits_per_row[row] - 1) / 8;
-            const unsigned last_bits = ((bits->bits_per_row[row] - 1) % 8) + 1;
-            for (unsigned col = 0; col <= last_col; ++col) {
-                b[col] = ~b[col]; // Invert
-            }
-            b[last_col] ^= 0xFF >> last_bits; // Re-invert unused bits in last byte
-        }
+        bitrow_invert(bits->bb[row], bits->bits_per_row[row]);
     }
 }
 
@@ -443,14 +399,29 @@ void bitrow_clear(bitrow_t bitrow, uint16_t *bitrow_num_bits)
 
 void bitrow_add_bit(bitrow_t bitrow, uint16_t *bitrow_num_bits, int bit)
 {
-    uint16_t col_index = *bitrow_num_bits / 8;
-    uint16_t bit_index = *bitrow_num_bits % 8;
-    if (col_index < BITBUF_COLS) {
-        bitrow[col_index] |= (bit << (7 - bit_index));
-        (*bitrow_num_bits)++;
+    uint16_t col_index = bits->bits_per_row[bits->num_rows - 1] / 8;
+    uint16_t bit_index = bits->bits_per_row[bits->num_rows - 1] % 8;
+    if (bits->bits_per_row[bits->num_rows - 1] > 0
+            && bits->bits_per_row[bits->num_rows - 1] % (BITBUF_COLS * 8) == 0) {
+        // spill into next row
+        // fprintf(stderr, "%s: row spill [%d] to %d (%d)\n", __func__, bits->num_rows - 1, col_index, bits->free_row);
+        if (bits->free_row == BITBUF_ROWS - 1) {
+            //print_logf(LOG_WARNING, __func__, "Warning: row count limit (%d rows) reached", BITBUF_ROWS);
+            fprintf(stderr, "%s: Warning: row count limit (%d rows) reached\n", __func__, BITBUF_ROWS);
+        }
+        if (bits->free_row < BITBUF_ROWS) {
+            bits->free_row++;
+        }
+        else {
+            // fprintf(stderr, "%s: Could not add more rows\n", __func__);
+            return;
+        }
     }
     else {
-        // fprintf(stderr, "ERROR: bitbuffer::bitrow:: Could not add more columns\n");    // Some decoders may add many columns...
+        // fprintf(stderr, "ERROR: bitbuffer:: Could not add more columns\n");    // Some decoders may add many columns...
+    uint8_t *b = bits->bb[bits->num_rows - 1];
+    b[col_index] |= (bit << (7 - bit_index));
+    bits->bits_per_row[bits->num_rows - 1]++;
     }
 }
 
@@ -512,56 +483,6 @@ unsigned bitrow_manchester_decode(bitrow_t const inrow, uint16_t inrow_num_bits,
             break;
 
         bitrow_add_bit(outrow, outrow_num_bits, bit2);
-    }
-
-    return ipos;
-}
-
-unsigned bitrow_differential_manchester_decode(bitrow_t const inrow, uint16_t inrow_num_bits, unsigned start,
-        bitrow_t outrow, uint16_t *outrow_num_bits, unsigned max)
-{
-    uint8_t *bits     = inrow;
-    unsigned int len  = inrow_num_bits;
-    unsigned int ipos = start;
-    uint8_t bit1, bit2 = 0;
-
-    if (max && len > start + (max * 2))
-        len = start + (max * 2);
-
-    // the first long pulse will determine the clock
-    // if needed skip one short pulse to get in synch
-    while (ipos < len) {
-        bit1         = bit_at(bits, ipos++);
-        bit2         = bit_at(bits, ipos++);
-        uint8_t bit3 = bit_at(bits, ipos);
-
-        if (bit1 != bit2) {
-            if (bit2 != bit3) {
-                bitrow_add_bit(outrow, outrow_num_bits, 0);
-            }
-            else {
-                bit2 = bit1;
-                ipos -= 1;
-                break;
-            }
-        }
-        else {
-            bit2 = 1 - bit1;
-            ipos -= 2;
-            break;
-        }
-    }
-
-    while (ipos < len) {
-        bit1 = bit_at(bits, ipos++);
-        if (bit1 == bit2)
-            break; // clock missing, abort
-        bit2 = bit_at(bits, ipos++);
-
-        if (bit1 == bit2)
-            bitrow_add_bit(outrow, outrow_num_bits, 1);
-        else
-            bitrow_add_bit(outrow, outrow_num_bits, 0);
     }
 
     return ipos;
