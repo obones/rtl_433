@@ -99,7 +99,16 @@ void bitbuffer_add_sync(bitbuffer_t *bits)
 void bitbuffer_invert(bitbuffer_t *bits)
 {
     for (unsigned row = 0; row < bits->num_rows; ++row) {
-        bitrow_invert(bits->bb[row], bits->bits_per_row[row]);
+        if (bits->bits_per_row[row] > 0) {
+            uint8_t *b = bits->bb[row];
+
+            const unsigned last_col  = (bits->bits_per_row[row] - 1) / 8;
+            const unsigned last_bits = ((bits->bits_per_row[row] - 1) % 8) + 1;
+            for (unsigned col = 0; col <= last_col; ++col) {
+                b[col] = ~b[col]; // Invert
+            }
+            b[last_col] ^= 0xFF >> last_bits; // Re-invert unused bits in last byte
+        }
     }
 }
 
