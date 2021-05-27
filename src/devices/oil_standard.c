@@ -52,14 +52,15 @@ static int oil_standard_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     uint16_t binding_countdown = 0;
     uint8_t flags;
     uint8_t alarm;
-    bitbuffer_t databits = {0};
+    bitrow_t databits = {0};
+    uint16_t databits_num_bits = 0;
 
-    bitpos = bitbuffer_manchester_decode(bitbuffer, row, bitpos, &databits, 41);
+    bitpos = bitbuffer_manchester_decode(bitbuffer, row, bitpos, databits, &databits_num_bits, 41);
 
-    if (databits.bits_per_row[0] < 32 || databits.bits_per_row[0] > 40 || (databits.bb[0][4] & 0xfe) != 0)
+    if (databits_num_bits < 32 || databits_num_bits > 40 || (databits[4] & 0xfe) != 0)
         return 0; // TODO: fix calling code to handle negative return values
 
-    b = databits.bb[0];
+    b = databits;
 
     // The unit ID changes when you rebind by holding a magnet to the
     // sensor for long enough.

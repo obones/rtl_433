@@ -191,7 +191,8 @@ the reverse of bitbuffer_manchester_decode(), so we invert the result.
 static int schrader_SMD3MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     data_t *data;
-    bitbuffer_t decoded = { 0 };
+    bitrow_t decoded = { 0 };
+    uint16_t decoded_num_bits = 0;
     char id_str[9];
     unsigned flags, serial_id, pressure;
     int ret;
@@ -212,18 +213,18 @@ static int schrader_SMD3MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     /* Check and decode the Manchester bits */
     ret = bitbuffer_manchester_decode(bitbuffer, 0, NUM_BITS_PREAMBLE,
-                                      &decoded, NUM_BITS_DATA);
+                                      decoded, &decoded_num_bits, NUM_BITS_DATA);
     if (ret != NUM_BITS_TOTAL) {
         if (decoder->verbose > 1) {
             fprintf(stderr, "%s: invalid Manchester data\n", __func__);
         }
         return DECODE_FAIL_MIC;
     }
-    bitbuffer_invert(&decoded);
+    bitrow_invert(decoded, decoded_num_bits);
 
     /* Get the decoded data fields */
     /* FFFSSSSS SSSSSSSS SSSSSSSS SSSPPPPP PPPPPxxx */
-    b         = decoded.bb[0];
+    b         = decoded;
     flags     = b[0] >> 5;
     serial_id = ((b[0] & 0x1f) << 19) | (b[1] << 11) | (b[2] << 3) | (b[3] >> 5);
     pressure  = ((b[3] & 0x1f) <<  5) | (b[4] >> 3);

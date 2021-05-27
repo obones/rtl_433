@@ -224,8 +224,9 @@ static int oregon_scientific_v2_1_decode(r_device *decoder, bitbuffer_t *bitbuff
         return DECODE_ABORT_EARLY;
     }
 
-    bitbuffer_t databits = {0};
-    uint8_t *msg = databits.bb[0];
+    bitrow_t databits = {0};
+    uint16_t databits_num_bits = 0;
+    uint8_t *msg = databits;
 
     // Possible    v2.1 Protocol message
     unsigned int sync_test_val = ((unsigned)b[3] << 24) | (b[4] << 16) | (b[5] << 8) | (b[6]);
@@ -250,13 +251,13 @@ static int oregon_scientific_v2_1_decode(r_device *decoder, bitbuffer_t *bitbuff
         }
 
         //bitrow_printf(b, bitbuffer->bits_per_row[0], "Raw OSv2 bits: ");
-        bitbuffer_manchester_decode(bitbuffer, 0, pattern_index + 40, &databits, 173);
-        reflect_nibbles(databits.bb[0], (databits.bits_per_row[0]+7)/8);
+        bitbuffer_manchester_decode(bitbuffer, 0, pattern_index + 40, databits, &databits_num_bits, 173);
+        reflect_nibbles(databits, (databits_num_bits+7)/8);
         //bitbuffer_printf(&databits, "MC OSv2 bits (from %d+40): ", pattern_index);
 
         break;
     }
-    int msg_bits = databits.bits_per_row[0];
+    int msg_bits = databits_num_bits;
 
     int sensor_id = (msg[0] << 8) | msg[1];
     if (decoder->verbose) {

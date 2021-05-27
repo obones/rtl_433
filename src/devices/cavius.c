@@ -61,24 +61,25 @@ static int cavius_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
     bit_offset += sizeof(preamble) * 8; // skip sync
 
-    bitbuffer_t databits = {0};
+    bitrow_t databits = {0};
+    uint16_t databits_num_bits = 0;
 
-    bitbuffer_manchester_decode(bitbuffer, 0, bit_offset, &databits, 11 * 8);
-    bitbuffer_invert(&databits);
+    bitbuffer_manchester_decode(bitbuffer, 0, bit_offset, databits, &databits_num_bits, 11 * 8);
+    bitrow_invert(databits, databits_num_bits);
 
     // we require 11 bytes
-    if (databits.bits_per_row[0] < 11 * 8) {
+    if (databits_num_bits < 11 * 8) {
         return DECODE_FAIL_SANITY; // manchester_decode fail
     }
 
-    uint8_t *b = databits.bb[0];
+    uint8_t *b = databits;
 
     uint32_t net_id    = ((uint32_t)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
     uint32_t sender_id = ((uint32_t)b[7] << 24) | (b[8] << 16) | (b[9] << 8) | (b[10]);
     int message        = (b[4]);
     int batt_low       = (b[4] & cavius_battlow) != 0;
 
-    int crc = crc8le(databits.bb[0], 7, 0x31, 0x0);
+    int crc = crc8le(databits, 7, 0x31, 0x0);
     if (crc != 0)
         return DECODE_FAIL_MIC; // invalid CRC
 

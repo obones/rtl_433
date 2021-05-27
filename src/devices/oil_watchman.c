@@ -33,7 +33,8 @@ static int oil_watchman_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     double temperature;
     data_t *data;
     unsigned bitpos = 0;
-    bitbuffer_t databits = {0};
+    bitrow_t databits = {0};
+    uint16_t databits_num_bits = 0;
     int events = 0;
 
     // Find a preamble with enough bits after it that it could be a complete packet
@@ -43,11 +44,11 @@ static int oil_watchman_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         // Skip the matched preamble bits to point to the data
         bitpos += 6;
 
-        bitpos = bitbuffer_manchester_decode(bitbuffer, 0, bitpos, &databits, 64);
-        if (databits.bits_per_row[0] != 64)
+        bitpos = bitbuffer_manchester_decode(bitbuffer, 0, bitpos, databits, &databits_num_bits, 64);
+        if (databits_num_bits != 64)
             continue; // DECODE_ABORT_LENGTH
 
-        b = databits.bb[0];
+        b = databits;
 
         // Check for postamble, depending on last data bit
         if (bitbuffer_search(bitbuffer, 0, bitpos, &postamble_pattern[b[7] & 1], 2) != bitpos)

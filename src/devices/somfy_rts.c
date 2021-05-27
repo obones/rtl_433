@@ -101,7 +101,8 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     unsigned data_start = 0;
     uint8_t const *preamble_pattern;
     unsigned preamble_pattern_bit_length = 0;
-    bitbuffer_t decoded = { 0 };
+    bitrow_t decoded = { 0 };
+    uint16_t decoded_num_bits = 0;
     uint8_t *b;
     int chksum_calc;
     int chksum;
@@ -134,10 +135,10 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (bitbuffer_search(bitbuffer, decode_row, 0, preamble_pattern, preamble_pattern_bit_length) != 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer_manchester_decode(bitbuffer, decode_row, data_start, &decoded, 56) - data_start < 56)
+    if (bitbuffer_manchester_decode(bitbuffer, decode_row, data_start, decoded, &decoded_num_bits, 56) - data_start < 56)
         return DECODE_ABORT_EARLY;
 
-    b = decoded.bb[0];
+    b = decoded;
 
     // descramble
     for (int i = 6; i > 0; i--)

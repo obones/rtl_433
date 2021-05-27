@@ -68,7 +68,7 @@ Once the above has been run twice the two are merged
 
 */
 
-int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t *fixed_p, int verbose)
+int _decode_v2_half(bitrow_t bits, uint16_t bits_num_bits, uint8_t roll_array[], bitrow_t fixed_p, uint16_t* fixed_p_count, int verbose)
 {
     uint8_t invert = 0;
     uint8_t order  = 0;
@@ -77,25 +77,25 @@ int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t *fixed_
     uint8_t buffy[10];
 
 
-    uint8_t part_id = (bits->bb[0][0] >> 6);
+    uint8_t part_id = (bits[0] >> 6);
 
     if (verbose) {
-        fprintf(stderr, "%s: bits_per_row = %d\n", __func__, bits->bits_per_row[0]);
+        fprintf(stderr, "%s: bits_per_row = %d\n", __func__, bits_num_bits);
 
-        bitrow_debugf(bits->bb[0], bits->bits_per_row[0], "%s : ", __func__);
+        bitrow_debugf(bits, bits_num_bits, "%s : ", __func__);
     }
 
-    bitbuffer_extract_bytes(bits, 0, start_pos, buffy, 2);
+    bitrow_extract_bytes(bits, start_pos, buffy, 2);
     start_pos += 2;
 
-    bitbuffer_extract_bytes(bits, 0, start_pos, buffy, 8);
+    bitrow_extract_bytes(bits, start_pos, buffy, 8);
     start_pos += 8;
     order = buffy[0] >> 4;
 
     invert = buffy[0] & 0x0f;
     // bitrow_debug(&invert, 8);
 
-    bitbuffer_extract_bytes(bits, 0, start_pos, buffy, 30);
+    bitrow_extract_bytes(bits, start_pos, buffy, 30);
     start_pos += 30;
 
     // copy 30 bits of data into 32bit int then shift >> 2
@@ -203,7 +203,7 @@ int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t *fixed_
         return 2;
     }
 
-    bitbuffer_extract_bytes(bits, 0, 4, buffy, 8);
+    bitrow_extract_bytes(bits, 4, buffy, 8);
     x     = buffy[0];
     int k = 0;
     for (int i = 6; i >= 0; i -= 2) {
@@ -234,10 +234,10 @@ int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t *fixed_
 
     // fixed_p = p0 + p1
     for (int i = 9; i >= 0; i--) {
-        bitbuffer_add_bit(fixed_p, (p0 >> i) & 0x01);
+        bitrow_add_bit(fixed_p, fixed_p_count, (p0 >> i) & 0x01);
     }
     for (int i = 9; i >= 0; i--) {
-        bitbuffer_add_bit(fixed_p, (p1 >> i) & 0x01);
+        bitrow_add_bit(fixed_p, fixed_p_count, (p1 >> i) & 0x01);
     }
 
     return 0;
@@ -249,15 +249,16 @@ unsigned _preamble_len           = 28;
 static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     unsigned search_index = 0;
-    bitbuffer_t bits = {0};
-    // int i            = 0;
+    bitrow_t bits = {0};
+    uint16_t bits_num_bits = 0;
 
-    //bitbuffer_t bits_1    = {0};
-    bitbuffer_t fixed_1   = {0};
+    uint16_t fixed_1_num_bits = 0;
+    bitrow_t fixed_1 = {0};
+
     uint8_t rolling_1[16] = {0};
 
-    //bitbuffer_t bits_2    = {0};
-    bitbuffer_t fixed_2   = {0};
+    uint16_t fixed_2_num_bits = 0;
+    bitrow_t fixed_2 = {0};
     uint8_t rolling_2[16] = {0};
 
     for (uint16_t row = 0; row < bitbuffer->num_rows; ++row) {
@@ -271,46 +272,47 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             break;
         }
 
-        bitbuffer_clear(&bits);
-        bitbuffer_manchester_decode(bitbuffer, row, search_index + 26, &bits, 80);
+        bitrow_clear(bits, &bits_num_bits);
+        bits_num_bits = 0;
+        bitbuffer_manchester_decode(bitbuffer, row, search_index + 26, bits, &bits_num_bits, 80);
         search_index += 20;
-        if (bits.bits_per_row[0] < 42) {
+        if (bits_num_bits < 42) {
             continue; // DECODE_ABORT_LENGTH;
         }
 
         if (decoder->verbose) {
             (void)fprintf(stderr, "%s: manchester_decode %d len = %u\n", __func__,
-                    0, bits.bits_per_row[0]);
-            bitrow_debugf(bits.bb[0], bits.bits_per_row[0], "%s: manchester_decoded %d", __func__, 0);
+                    0, bits_num_bits);
+            bitrow_debugf(bits, bits_num_bits, "%s: manchester_decoded %d", __func__, 0);
         }
 
         // valid = 0X00XXXX
         // 1st 3rs and 4th bits should always be 0
-        if (bits.bb[0][0] & 0xB0) {
+        if (bits[0] & 0xB0) {
             continue; // DECODE_FAIL_SANITY;
         }
 
         // 2nd bit indicates with half of the data
-        if (bits.bb[0][0] & 0xC0) {
+        if (bits[0] & 0xC0) {
             if (decoder->verbose)
                 (void)fprintf(stderr, "%s: Set 2\n", __func__);
-            _decode_v2_half(&bits, rolling_2, &fixed_2, decoder->verbose);
+            _decode_v2_half(bits, bits_num_bits, rolling_2, fixed_2, &fixed_2_num_bits, decoder->verbose);
         }
         else {
             if (decoder->verbose)
                 (void)fprintf(stderr, "%s: Set 1\n", __func__);
-            _decode_v2_half(&bits, rolling_1, &fixed_1, decoder->verbose);
+            _decode_v2_half(bits, bits_num_bits, rolling_1, fixed_1, &fixed_1_num_bits, decoder->verbose);
         }
 
         // break if we've received both halfs
-        if (fixed_1.bits_per_row[0] > 1 && fixed_2.bits_per_row[0] > 1) {
+        if (fixed_1_num_bits > 1 && fixed_2_num_bits > 1) {
             break;
         }
 
     }
 
     // Do we have what we need ??
-    if (fixed_1.bits_per_row[0] == 0 || fixed_2.bits_per_row[0] == 0) {
+    if (fixed_1_num_bits == 0 || fixed_2_num_bits == 0) {
         return DECODE_FAIL_SANITY;
     }
 
@@ -356,12 +358,12 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Assemble "fixed" data part
     uint64_t fixed_total = 0;
     uint8_t *bb;
-    bb = fixed_1.bb[0];
+    bb = fixed_1;
     fixed_total ^= ((uint64_t)bb[0]) << 32;
     fixed_total ^= ((uint64_t)bb[1]) << 24;
     fixed_total ^= ((uint64_t)bb[2]) << 16;
 
-    bb = fixed_2.bb[0];
+    bb = fixed_2;
     fixed_total ^= ((uint64_t)bb[0]) << 12;
     fixed_total ^= ((uint64_t)bb[1]) << 4;
     fixed_total ^= (bb[2] >> 4) & 0x0f;
