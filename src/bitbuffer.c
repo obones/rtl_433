@@ -99,16 +99,7 @@ void bitbuffer_add_sync(bitbuffer_t *bits)
 void bitbuffer_invert(bitbuffer_t *bits)
 {
     for (unsigned row = 0; row < bits->num_rows; ++row) {
-        if (bits->bits_per_row[row] > 0) {
-            uint8_t *b = bits->bb[row];
-
-            const unsigned last_col  = (bits->bits_per_row[row] - 1) / 8;
-            const unsigned last_bits = ((bits->bits_per_row[row] - 1) % 8) + 1;
-            for (unsigned col = 0; col <= last_col; ++col) {
-                b[col] = ~b[col]; // Invert
-            }
-            b[last_col] ^= 0xFF >> last_bits; // Re-invert unused bits in last byte
-        }
+        bitrow_invert(bits->bb[row], bits->bits_per_row[row]);
     }
 }
 
@@ -155,29 +146,7 @@ void bitbuffer_nrzm_decode(bitbuffer_t *bits)
 void bitbuffer_extract_bytes(bitbuffer_t *bitbuffer, unsigned row,
         unsigned pos, uint8_t *out, unsigned len)
 {
-    uint8_t *bits = bitbuffer->bb[row];
-    if (len == 0)
-        return;
-    if ((pos & 7) == 0) {
-        memcpy(out, bits + (pos / 8), (len + 7) / 8);
-    }
-    else {
-        unsigned shift = 8 - (pos & 7);
-        unsigned bytes = (len + 7) >> 3;
-        uint8_t *p = out;
-        uint16_t word;
-        pos = pos >> 3; // Convert to bytes
-
-        word = bits[pos];
-
-        while (bytes--) {
-            word <<= 8;
-            word |= bits[++pos];
-            *(p++) = word >> shift;
-        }
-    }
-    if (len & 7)
-        out[(len - 1) / 8] &= 0xff00 >> (len & 7); // mask off bottom bits
+    bitrow_extract_bytes(bitbuffer->bb[row], pos, out, len);
 }
 
 // If we make this an inline function instead of a macro, it means we don't
@@ -214,28 +183,9 @@ unsigned bitbuffer_search(bitbuffer_t *bitbuffer, unsigned row, unsigned start,
 }
 
 unsigned bitbuffer_manchester_decode(bitbuffer_t *inbuf, unsigned row, unsigned start,
-        bitbuffer_t *outbuf, unsigned max)
+        uint8_t *outrow, uint16_t *outrow_num_bits, unsigned max)
 {
-    uint8_t *bits     = inbuf->bb[row];
-    unsigned int len  = inbuf->bits_per_row[row];
-    unsigned int ipos = start;
-
-    if (max && len > start + (max * 2))
-        len = start + (max * 2);
-
-    while (ipos < len) {
-        uint8_t bit1, bit2;
-
-        bit1 = bit_at(bits, ipos++);
-        bit2 = bit_at(bits, ipos++);
-
-        if (bit1 == bit2)
-            break;
-
-        bitbuffer_add_bit(outbuf, bit2);
-    }
-
-    return ipos;
+    return bitrow_manchester_decode(inbuf->bb[row], inbuf->bits_per_row[row], start, outrow, outrow_num_bits, max);
 }
 
 unsigned bitbuffer_differential_manchester_decode(bitbuffer_t *inbuf, unsigned row, unsigned start,
@@ -464,6 +414,88 @@ int bitbuffer_find_repeated_row(bitbuffer_t *bits, unsigned min_repeats, unsigne
         }
     }
     return -1;
+}
+
+void bitrow_clear(bitrow_t bitrow, uint16_t *bitrow_num_bits)
+{
+    memset(&bitrow[0], 0, BITBUF_COLS);
+    *bitrow_num_bits = 0;
+}
+
+void bitrow_add_bit(bitrow_t bitrow, uint16_t *bitrow_num_bits, int bit)
+{
+    uint16_t col_index = *bitrow_num_bits / 8;
+    uint16_t bit_index = *bitrow_num_bits % 8;
+    if (col_index < BITBUF_COLS) {
+        bitrow[col_index] |= (bit << (7 - bit_index));
+        (*bitrow_num_bits)++;
+    }
+    else {
+        // fprintf(stderr, "ERROR: bitbuffer::bitrow:: Could not add more columns\n");    // Some decoders may add many columns...
+    }
+}
+
+void bitrow_extract_bytes(bitrow_t const bits, unsigned pos, uint8_t *out, unsigned len)
+{
+    if (len == 0)
+        return;
+    if ((pos & 7) == 0) {
+        memcpy(out, bits + (pos / 8), (len + 7) / 8);
+    }
+    else {
+        unsigned shift = 8 - (pos & 7);
+        unsigned bytes = (len + 7) >> 3;
+        uint8_t *p     = out;
+        uint16_t word;
+        pos = pos >> 3; // Convert to bytes
+
+        word = bits[pos];
+
+        while (bytes--) {
+            word <<= 8;
+            word |= bits[++pos];
+            *(p++) = word >> shift;
+        }
+    }
+    if (len & 7)
+        out[(len - 1) / 8] &= 0xff00 >> (len & 7); // mask off bottom bits
+}
+
+void bitrow_invert(bitrow_t bitrow, uint16_t bitrow_num_bits)
+{
+    if (bitrow_num_bits > 0) {
+        const unsigned last_col  = (bitrow_num_bits - 1) / 8;
+        const unsigned last_bits = ((bitrow_num_bits - 1) % 8) + 1;
+        for (unsigned col = 0; col <= last_col; ++col) {
+            bitrow[col] = ~bitrow[col]; // Invert
+        }
+        bitrow[last_col] ^= 0xFF >> last_bits; // Re-invert unused bits in last byte
+    }
+}
+
+unsigned bitrow_manchester_decode(bitrow_t const inrow, uint16_t inrow_num_bits, unsigned start,
+        bitrow_t outrow, uint16_t *outrow_num_bits, unsigned max)
+{
+    uint8_t const *bits     = inrow;
+    unsigned int len  = inrow_num_bits;
+    unsigned int ipos = start;
+
+    if (max && len > start + (max * 2))
+        len = start + (max * 2);
+
+    while (ipos < len) {
+        uint8_t bit1, bit2;
+
+        bit1 = bit_at(bits, ipos++);
+        bit2 = bit_at(bits, ipos++);
+
+        if (bit1 == bit2)
+            break;
+
+        bitrow_add_bit(outrow, outrow_num_bits, bit2);
+    }
+
+    return ipos;
 }
 
 // Unit testing
