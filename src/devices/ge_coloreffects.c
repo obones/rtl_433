@@ -33,7 +33,7 @@ static inline int bit(const uint8_t *bytes, unsigned bit)
  * 10 = 0
  *  1100 = 1
  */
-unsigned ge_decode(bitbuffer_t *inbuf, unsigned row, unsigned start, bitbuffer_t *outbuf)
+unsigned ge_decode(bitbuffer_t *inbuf, unsigned row, unsigned start, bitrow_t outrow, uint16_t *outrow_num_bits)
 {
     uint8_t *bits = inbuf->bb[row];
     unsigned int len = inbuf->bits_per_row[row];
@@ -46,13 +46,13 @@ unsigned ge_decode(bitbuffer_t *inbuf, unsigned row, unsigned start, bitbuffer_t
         bit2 = bit(bits, ipos++);
 
         if (bit1 == 1 && bit2 == 0) {
-            bitbuffer_add_bit(outbuf, 0);
+            bitrow_add_bit(outrow, outrow_num_bits, 0);
         } else if (bit1 == 1 && bit2 == 1) {
             // Get two more bits
             bit1 = bit(bits, ipos++);
             bit2 = bit(bits, ipos++);
             if (bit1 == 0 && bit2 == 0) {
-                bitbuffer_add_bit(outbuf, 1);
+                bitrow_add_bit(outrow, outrow_num_bits, 1);
             } else {
                 break;
             }
@@ -67,11 +67,12 @@ unsigned ge_decode(bitbuffer_t *inbuf, unsigned row, unsigned start, bitbuffer_t
 static int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned start_pos)
 {
     data_t *data;
-    bitbuffer_t packet_bits = {0};
+    bitrow_t packet_bits = {0};
+    uint16_t packet_bits_num_bits = 0;
     uint8_t device_id;
     uint8_t command;
 
-    ge_decode(bitbuffer, row, start_pos, &packet_bits);
+    ge_decode(bitbuffer, row, start_pos, packet_bits, &packet_bits_num_bits);
     //bitbuffer_print(&packet_bits);
 
     /* From http://www.deepdarc.com/2010/11/27/hacking-christmas-lights/
@@ -84,23 +85,23 @@ static int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, uns
      */
 
     // Frame should be 17 decoded bits (not including preamble)
-    if (packet_bits.bits_per_row[0] != 17)
+    if (packet_bits_num_bits != 17)
         return DECODE_ABORT_LENGTH;
 
     // First two bits must be 0
-    if (*packet_bits.bb[0] & 0xc0)
+    if (packet_bits[0] & 0xc0)
         return DECODE_FAIL_SANITY;
 
     // Last bit must be 0
-    if (bit(packet_bits.bb[0], 16) != 0)
+    if (bit(packet_bits, 16) != 0)
         return DECODE_FAIL_SANITY;
 
     // Extract device ID
     // We want bits [2..8]. Since the first two bits are zero, we'll just take the entire first byte
-    device_id = *packet_bits.bb[0];
+    device_id = packet_bits[0];
 
     // Extract command from the second byte
-    bitbuffer_extract_bytes(&packet_bits, 0, 8, &command, 8);
+    bitrow_extract_bytes(packet_bits, 8, &command, 8);
 
     char cmd[7];
     switch(command) {
