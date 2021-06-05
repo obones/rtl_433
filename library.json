@@ -1,0 +1,25 @@
+{
+  "name": "rtl_433 for RFLink32",
+  "version": "0.1.0",
+  "description": "rtl_433 project adapted for use in RFLink32",
+  "keywords": "rtl_433,RFLink32",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/obones/rtl_433.git",
+    "branch": "RFLink32"
+  },
+  "authors": [
+    {
+      "name": "Christian W. Zuckschwerdt"
+    },
+    {
+      "name": "Olivier Sannier"
+    }
+  ],
+  "license": "GPL-2.0-or-later",
+  "platforms": "espressif32",
+  "build": {
+    "flags": "-D RTL_433_REDUCE_STACK_USE",
+    "srcFilter": "+<devices/*> +<abuf.c> +<bitbuffer.c> +<compat_time.c> +<data.c> +<decoder_util.c> +<fileformat.c> +<list.c> +<pulse_demod.c> +<r_api.c> +<r_util.c>"
+  }
+}
