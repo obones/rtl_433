@@ -493,6 +493,56 @@ unsigned bitrow_manchester_decode(bitrow_t const inrow, uint16_t inrow_num_bits,
     return ipos;
 }
 
+unsigned bitrow_differential_manchester_decode(bitrow_t const inrow, uint16_t inrow_num_bits, unsigned start,
+        bitrow_t outrow, uint16_t *outrow_num_bits, unsigned max)
+{
+    uint8_t *bits     = inrow;
+    unsigned int len  = inrow_num_bits;
+    unsigned int ipos = start;
+    uint8_t bit1, bit2 = 0;
+
+    if (max && len > start + (max * 2))
+        len = start + (max * 2);
+
+    // the first long pulse will determine the clock
+    // if needed skip one short pulse to get in synch
+    while (ipos < len) {
+        bit1         = bit_at(bits, ipos++);
+        bit2         = bit_at(bits, ipos++);
+        uint8_t bit3 = bit_at(bits, ipos);
+
+        if (bit1 != bit2) {
+            if (bit2 != bit3) {
+                bitrow_add_bit(outrow, outrow_num_bits, 0);
+            }
+            else {
+                bit2 = bit1;
+                ipos -= 1;
+                break;
+            }
+        }
+        else {
+            bit2 = 1 - bit1;
+            ipos -= 2;
+            break;
+        }
+    }
+
+    while (ipos < len) {
+        bit1 = bit_at(bits, ipos++);
+        if (bit1 == bit2)
+            break; // clock missing, abort
+        bit2 = bit_at(bits, ipos++);
+
+        if (bit1 == bit2)
+            bitrow_add_bit(outrow, outrow_num_bits, 1);
+        else
+            bitrow_add_bit(outrow, outrow_num_bits, 0);
+    }
+
+    return ipos;
+}
+
 // Unit testing
 #ifdef _TEST
 

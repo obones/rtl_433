@@ -177,9 +177,16 @@ void bitrow_invert(bitrow_t bitrow, uint16_t bitrow_num_bits);
 /// Manchester decoding from one bitrow into another, starting at the
 /// specified start bit. Decode at most 'max' data bits (i.e. 2*max)
 /// bits from the input buffer). Return the bit position in the input row
-/// (i.e. returns start + 2*outbuf->bits_per_row[0]).
+/// (i.e. returns start + 2 * *outrow_num_bits).
 /// per IEEE 802.3 conventions, i.e. high-low is a 0 bit, low-high is a 1 bit.
 unsigned bitrow_manchester_decode(bitrow_t const inrow, uint16_t inrow_num_bits, unsigned start,
+        bitrow_t outrow, uint16_t *outrow_num_bits, unsigned max);
+
+/// Differential Manchester decoding from one bitrow into another, starting at the
+/// specified start bit. Decode at most 'max' data bits (i.e. 2*max)
+/// bits from the input buffer). Return the bit position in the input row
+/// (i.e. returns start + 2 * *outrow_num_bits).
+unsigned bitrow_differential_manchester_decode(bitrow_t const inrow, uint16_t inrow_num_bits, unsigned start,
         bitrow_t outrow, uint16_t *outrow_num_bits, unsigned max);
 
 #endif /* INCLUDE_BITBUFFER_H_ */
