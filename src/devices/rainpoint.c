@@ -64,16 +64,17 @@ static int rainpoint_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
     start_pos += sizeof (preamble_pattern) * 8 - 2; // keep initial data bit
 
-    bitbuffer_t msg = {0};
-    unsigned len = bitbuffer_manchester_decode(bitbuffer, 0, start_pos, &msg, 12 * 8);
+    bitrow_t msg = {0};
+    uint16_t msg_num_bits = 0;
+    unsigned len = bitbuffer_manchester_decode(bitbuffer, 0, start_pos, msg, &msg_num_bits, 12 * 8);
     if (len - start_pos != 12 * 2 * 8) {
         if (decoder->verbose > 1)
             fprintf(stderr, "%s: Manchester decode failed, got %u bits\n", __func__, len - start_pos);
         return DECODE_ABORT_LENGTH;
     }
-    bitbuffer_invert(&msg);
+    bitrow_invert(msg, msg_num_bits);
 
-    uint8_t *b = msg.bb[0];
+    uint8_t *b = msg;
     reflect_bytes(b, 12);
     if (decoder->verbose > 1) {
         bitrow_printf(b, 12 * 8, "%s: ", __func__);
