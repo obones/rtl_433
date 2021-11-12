@@ -17,6 +17,9 @@
 #include "data.h"
 #include "r_device.h"
 
+// Round up (NUM_BITS / 8)
+#define NUM_BYTES(NUM_BITS) (((NUM_BITS) + 7) >> 3)
+
 #if defined _MSC_VER || defined ESP32 // Microsoft Visual Studio or ESP32
     // MSC and ESP32 have something like C99 restrict as __restrict
     #ifndef restrict
