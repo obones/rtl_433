@@ -49,18 +49,20 @@ Example data:
 
 #include "decoder.h"
 
+#define EXPECTED_BITS 76
+
 static int tpms_truck_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
-    bitrow_t packet_bits = {0};
+    uint8_t packet_bits[NUM_BYTES(EXPECTED_BITS)] = {0};
     uint16_t packet_bits_num_bits = 0;
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, &packet_bits_num_bits, 76);
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, packet_bits, &packet_bits_num_bits, EXPECTED_BITS);
 
-    if (packet_bits_num_bits < 76) {
+    if (packet_bits_num_bits < EXPECTED_BITS) {
         return 0; // DECODE_FAIL_SANITY;
     }
 
     uint8_t b[9] = {0};
-    bitbuffer_extract_bytes(&packet_bits, 0, 4, b, 72);
+    bitrow_extract_bytes(packet_bits, 4, b, 72);
 
     int chk = xor_bytes(b, 9);
     if (chk != 0) {

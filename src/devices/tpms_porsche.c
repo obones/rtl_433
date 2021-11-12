@@ -37,14 +37,16 @@ Data layout (nibbles):
 
 #include "decoder.h"
 
+#define EXPECTED_BITS 80
+
 static int tpms_porsche_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
-    bitrow_t packet_bits = {0};
+    uint8_t packet_bits[NUM_BYTES(EXPECTED_BITS)] = {0};
     uint16_t packet_bits_num_bits = 0;
-    bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, &packet_bits_num_bits, 80);
+    bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, packet_bits, &packet_bits_num_bits, EXPECTED_BITS);
 
     // make sure we decoded the expected number of bits
-    if (packet_bits_num_bits < 80) {
+    if (packet_bits_num_bits < EXPECTED_BITS) {
         // decoder_logf(decoder, 0, __func__, "bitpos=%u start_pos=%u = %u", bitpos, start_pos, (start_pos - bitpos));
         return 0; // DECODE_FAIL_SANITY;
     }

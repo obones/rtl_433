@@ -42,6 +42,8 @@ The payload data is 7 bytes:
 */
 #include "decoder.h"
 
+#define EXPECTED_BITS 11
+
 /// out needs to be at least (bits / 26, usually 7) bytes long
 static int proflame2_mc(bitbuffer_t *bitbuffer, unsigned row, unsigned start, uint8_t *out)
 {
@@ -59,10 +61,10 @@ static int proflame2_mc(bitbuffer_t *bitbuffer, unsigned row, unsigned start, ui
         if (sync != 0xe)
             return f;
 
-        bitrow_t decoded = {0};
+        uint8_t decoded[NUM_BYTES(EXPECTED_BITS)] = {0};
         uint16_t decoded_num_bits = 0;
-        pos = bitbuffer_manchester_decode(bitbuffer, row, pos, &decoded, &decoded_num_bits, 11);
-        if (decoded_num_bits != 11)
+        pos = bitbuffer_manchester_decode(bitbuffer, row, pos, decoded, &decoded_num_bits, EXPECTED_BITS);
+        if (decoded_num_bits != EXPECTED_BITS)
             return f;
 
         // invert IEEE MC to G.E.T. MC

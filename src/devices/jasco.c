@@ -19,6 +19,8 @@ Packets are 32 bit, 24 bit data and 8 bit XOR checksum.
 
 #include "decoder.h"
 
+#define EXPECTED_BITS 32
+
 static int jasco_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     uint8_t const preamble[] = {0xfc, 0x0c}; // length 16
@@ -37,11 +39,11 @@ static int jasco_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_LENGTH;
     }
 
-    bitrow_t packet_bits = {0};
+    uint8_t packet_bits[NUM_BYTES(EXPECTED_BITS)] = {0};
     uint16_t packet_bits_num_bits = 0;
-    bitbuffer_manchester_decode(bitbuffer, 0, start_pos, &packet_bits, &packet_bits_num_bits, 32);
+    bitbuffer_manchester_decode(bitbuffer, 0, start_pos, packet_bits, &packet_bits_num_bits, EXPECTED_BITS);
 
-    if (packet_bits_num_bits < 32) {
+    if (packet_bits_num_bits < EXPECTED_BITS) {
         return DECODE_ABORT_LENGTH;
     }
 

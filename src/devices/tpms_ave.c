@@ -30,10 +30,12 @@ Packet nibbles:
 
 #include "decoder.h"
 
+#define EXPECTED_BITS 160
+
 static int tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
     data_t *data;
-    bitrow_t packet_bits = {0};
+    uint8_t packet_bits[NUM_BYTES(EXPECTED_BITS)] = {0};
     uint16_t packet_bits_num_bits = 0;
     uint8_t *b;
     unsigned id;
@@ -48,12 +50,12 @@ static int tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
     double ratio;
     double offset;
 
-    bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, &packet_bits_num_bits, 160);
+    bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, packet_bits, &packet_bits_num_bits, EXPECTED_BITS);
 
     if (packet_bits_num_bits < 64) {
         return DECODE_ABORT_LENGTH; // too short to be a whole packet
     }
-    decoder_log_bitbuffer(decoder, 1, __func__, &packet_bits, "");
+    decoder_log_bitrow(decoder, 1, __func__, packet_bits, packet_bits_num_bits, "");
 
     b = &packet_bits[0];
 
