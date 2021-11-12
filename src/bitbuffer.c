@@ -416,12 +416,24 @@ void bitrow_add_bit_spillable(bitrow_t bitrow, uint16_t *bitrow_num_bits, int bi
             return;
         }
     }
-    else {
-        // fprintf(stderr, "ERROR: bitbuffer:: Could not add more columns\n");    // Some decoders may add many columns...
+    uint8_t *b = bitrow;
+    b[col_index] |= (bit << (7 - bit_index));
+    (*bitrow_num_bits)++;
+
+/*
+    // preamble compression
+    if (*bitrow_num_bits == 60 * 8) {
         uint8_t *b = bitrow;
-        b[col_index] |= (bit << (7 - bit_index));
-        (*bitrow_num_bits)++;
+        for (int i = 21; i < 60; ++i) {
+            if (b[20] != b[i]) {
+                return;
+            }
+        }
+        // fprintf(stderr, "%s: preamble compression\n", __func__);
+        memset(&b[30], 0, 30);
+        (*bitrow_num_bits) = 30 * 8;
     }
+*/
 }
 
 void bitrow_add_bit(bitrow_t bitrow, uint16_t *bitrow_num_bits, int bit)
