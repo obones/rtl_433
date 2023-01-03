@@ -100,6 +100,9 @@ def process_source(path, name):
                 if fName:
                     if fName not in links:
                         links[fName] = {"src": name, "type": "func"}
+                    if dSee:
+                        links[fName].update({"doc_line": dLine, "doc_see": dSee})
+                        dSee = None
                     links[fName].update({"doc_line": dLine, "doc": doc})
                     doc = None
                     fName = None
@@ -141,6 +144,7 @@ def process_source(path, name):
                 continue
             m = re.match(r'\s*/\*\*', line)
             if m:
+                fName = None
                 captureDoc = True
                 dLine = i + 1
                 doc = ''
@@ -237,6 +241,8 @@ def process_source(path, name):
                 if not fName:
                     err(f"::error file={name},line={i + 1}::No func")
                 for model in models:
+                    if not re.match(r'^[A-Za-z][0-9A-Za-z"]+(-[0-9A-Za-z"]+)?$', model):
+                        log(f"::error file={name},line={i + 1}::Bad model name \"{model}\"")
                     if model in links and links[model]["func"] != fName:
                         log(f"::notice file={name},line={i + 1}::Reused model")
                     elif model in links:
@@ -264,20 +270,21 @@ def check_symbols(symbols):
 
         if d["type"] == "file":
             if "doc" not in d:
-                log(f"::notice file={f}::file doc missing")
+                log(f"::notice file={f},line=1::file doc missing")
                 pass
 
         if d["type"] == "r_device":
             if "decode_fn" not in d:
-                err(f"::error file={f}::device missing ({json.dumps(d)})")
+                err(f"::error file={d['src']},line={d['line']}::device missing ({json.dumps(d)}) for {f}")
             elif d["decode_fn"] not in symbols:
-                err(f"::error file={f}::decoder missing ({d['decode_fn']})")
+                err(f"::error file={d['src']},line={d['line']}::decoder missing ({d['decode_fn']}) for {f}")
 
         if d["type"] == "func":
             if "line" not in d:
-                err(f"::error file={f}::func missing")
+                err(f"::error file={d['src']}::func missing ({f})")
             if "doc" not in d or not d["doc"]:
-                #err(f"::error file={f}::doc missing")
+                if "doc_see" not in d or not d["doc_see"]:
+                    err(f"::warning file={d['src']},line={d['line']}::doc missing for {f}")
                 pass
 
         if d["type"] == "model":
@@ -294,27 +301,27 @@ def check_symbols(symbols):
 
         if d["type"] == "r_device":
             if "decode_fn" not in d:
-                err(f"::error file={f}::no decode_fn found ({d['src']})")
+                err(f"::error file={d['src']},line={d['line']}::no decode_fn found for {f}")
                 continue
             decode_fn = d["decode_fn"]
             func = {}
             if decode_fn in symbols:
                 func = symbols[decode_fn]
             else:
-                err(f"::error file={f}::decode_fn not found ({decode_fn})")
+                err(f"::error file={d['src']},line={d['line']}::decode_fn not found ({decode_fn}) for {f}")
             see = None
             if "doc_see" in func:
                 see = func["doc_see"]
                 if see not in symbols:
-                    err(f"::error file={f}::broken link for @sa ({see})")
+                    err(f"::error file={d['src']},line={d['line']}::broken link @sa ({see}) for {f}")
 
             if see and see in models_by_func:
-                # err(f"::error file={f}::models on sa link ({see})")
+                # err(f"::error file={d['src']},line={d['line']}::models on sa link ({see}) for {f}")
                 pass
             elif decode_fn not in models_by_func:
-                err(f"::error file={f}::models not found ({d['src']})")
+                err(f"::error file={d['src']},line={d['line']}::models not found for {f}")
                 if see:
-                    err(f"::error file={f}::but @sa ({func['doc_see']})")
+                    err(f"::error file={d['src']},line={d['line']}::but @sa ({func['doc_see']})")
 
 
 def main(args):
