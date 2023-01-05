@@ -52,7 +52,7 @@ add_library(r_433 STATIC
     devices/altronics_x7064.c
     devices/ambient_weather.c
     devices/ambientweather_tx8300.c
-    devices/ambientweather_wh31e.c
+#    devices/ambientweather_wh31e.c
     devices/ant_antplus.c
     devices/archos_tbh.c
     devices/atech_ws308.c
