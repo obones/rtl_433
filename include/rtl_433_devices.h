@@ -119,7 +119,7 @@
     DECL(wt1024) \
     DECL(tpms_pmv107j) \
     DECL(ttx201) \
-    DECL(ambientweather_tx8300) \
+#    DECL(ambientweather_tx8300) \
 #    DECL(ambientweather_wh31e) \
     DECL(maverick_et73) \
     DECL(honeywell_wdb) \
