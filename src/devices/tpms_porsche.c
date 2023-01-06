@@ -39,16 +39,17 @@ Data layout (nibbles):
 
 static int tpms_porsche_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
-    bitbuffer_t packet_bits = {0};
-    bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 80);
+    bitrow_t packet_bits = {0};
+    uint16_t packet_bits_num_bits = 0;
+    bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, &packet_bits_num_bits, 80);
 
     // make sure we decoded the expected number of bits
-    if (packet_bits.bits_per_row[0] < 80) {
+    if (packet_bits_num_bits < 80) {
         // decoder_logf(decoder, 0, __func__, "bitpos=%u start_pos=%u = %u", bitpos, start_pos, (start_pos - bitpos));
         return 0; // DECODE_FAIL_SANITY;
     }
 
-    uint8_t *b = packet_bits.bb[0];
+    uint8_t *b = &packet_bits[0];
 
     // Checksum is CRC-16 poly 0x1021 init 0xffff over 8 bytes
     int checksum = crc16(b, 10, 0x1021, 0xffff);

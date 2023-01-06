@@ -37,14 +37,15 @@ static int jasco_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_LENGTH;
     }
 
-    bitbuffer_t packet_bits = {0};
-    bitbuffer_manchester_decode(bitbuffer, 0, start_pos, &packet_bits, 32);
+    bitrow_t packet_bits = {0};
+    uint16_t packet_bits_num_bits = 0;
+    bitbuffer_manchester_decode(bitbuffer, 0, start_pos, &packet_bits, &packet_bits_num_bits, 32);
 
-    if (packet_bits.bits_per_row[0] < 32) {
+    if (packet_bits_num_bits < 32) {
         return DECODE_ABORT_LENGTH;
     }
 
-    uint8_t *b = packet_bits.bb[0];
+    uint8_t *b = &packet_bits[0];
 
     int chk = b[0] ^ b[1] ^ b[2] ^ b[3];
     if (chk) {

@@ -51,10 +51,11 @@ Example data:
 
 static int tpms_truck_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
 {
-    bitbuffer_t packet_bits = {0};
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 76);
+    bitrow_t packet_bits = {0};
+    uint16_t packet_bits_num_bits = 0;
+    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, &packet_bits_num_bits, 76);
 
-    if (packet_bits.bits_per_row[row] < 76) {
+    if (packet_bits_num_bits < 76) {
         return 0; // DECODE_FAIL_SANITY;
     }
 
@@ -66,7 +67,7 @@ static int tpms_truck_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned
         return 0; // DECODE_FAIL_MIC;
     }
 
-    int state       = packet_bits.bb[0][0] >> 4; // fixed 0xa? could be sync
+    int state       = packet_bits[0] >> 4; // fixed 0xa? could be sync
     unsigned id     = (unsigned)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
     int wheel       = b[4];
     int flags       = b[5] >> 4;

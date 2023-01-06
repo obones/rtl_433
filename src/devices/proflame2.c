@@ -59,14 +59,15 @@ static int proflame2_mc(bitbuffer_t *bitbuffer, unsigned row, unsigned start, ui
         if (sync != 0xe)
             return f;
 
-        bitbuffer_t decoded = {0};
-        pos = bitbuffer_manchester_decode(bitbuffer, row, pos, &decoded, 11);
-        if (decoded.bits_per_row[0] != 11)
+        bitrow_t decoded = {0};
+        uint16_t decoded_num_bits = 0;
+        pos = bitbuffer_manchester_decode(bitbuffer, row, pos, &decoded, &decoded_num_bits, 11);
+        if (decoded_num_bits != 11)
             return f;
 
         // invert IEEE MC to G.E.T. MC
-        uint8_t data = decoded.bb[0][0] ^ 0xff;
-        uint8_t flag = decoded.bb[0][1] ^ 0xe0;
+        uint8_t data = decoded[0] ^ 0xff;
+        uint8_t flag = decoded[1] ^ 0xe0;
 
         int pad = (flag >> 7) & 1;
         int par = (flag >> 6) & 1;
