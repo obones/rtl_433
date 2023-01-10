@@ -41,6 +41,7 @@ void decoder_output_data(r_device *decoder, data_t *data)
     decoder->output_fn(decoder, data);
 }
 
+#ifndef RTL_433_DISABLE_DECODER_LOG
 // helper
 
 static char *bitrow_asprint_code(uint8_t const *bitrow, unsigned bit_len)
@@ -269,3 +270,4 @@ void decoder_output_bitbuffer_array(r_device *decoder, bitbuffer_t const *bitbuf
     }
 }
 */
+#endif
