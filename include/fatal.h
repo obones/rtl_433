@@ -15,12 +15,20 @@
 #define STRINGIFYX(x) #x
 #define STRINGIFY(x) STRINGIFYX(x)
 #define FILE_LINE __FILE__ ":" STRINGIFY(__LINE__)
+#ifndef RTL_433_DISABLE_FATAL_LOG
 #define FATAL(what) do { fprintf(stderr, "FATAL: " what " from " FILE_LINE "\n"); exit(1); } while (0)
+#else
+#define FATAL(what) /**/
+#endif
 #define FATAL_MALLOC(what) FATAL("low memory? malloc() failed in " what)
 #define FATAL_CALLOC(what) FATAL("low memory? calloc() failed in " what)
 #define FATAL_REALLOC(what) FATAL("low memory? realloc() failed in " what)
 #define FATAL_STRDUP(what) FATAL("low memory? strdup() failed in " what)
+#ifndef RTL_433_DISABLE_FATAL_LOG
 #define WARN(what) fprintf(stderr, "WARNING: " what " from " FILE_LINE "\n")
+#else
+#define WARN(what) /**/
+#endif
 #define WARN_MALLOC(what) WARN("low memory? malloc() failed in " what)
 #define WARN_CALLOC(what) WARN("low memory? calloc() failed in " what)
 #define WARN_REALLOC(what) WARN("low memory? realloc() failed in " what)
