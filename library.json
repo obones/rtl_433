@@ -20,6 +20,6 @@
   "platforms": "espressif32",
   "build": {
     "flags": "-D RTL_433_REDUCE_STACK_USE",
-    "srcFilter": "+<devices/*> +<abuf.c> +<bitbuffer.c> +<compat_time.c> +<data.c> +<decoder_util.c> +<fileformat.c> +<list.c> +<pulse_demod.c> +<r_api.c> +<r_util.c> +<util.c>"
+    "srcFilter": "+<devices/*> +<abuf.c> +<bitbuffer.c> +<compat_time.c> +<data.c> +<decoder_util.c> +<fileformat.c> +<list.c> +<logger.c> +<pulse_slicer.c> +<r_api.c> +<r_util.c> +<util.c>"
   }
 }
