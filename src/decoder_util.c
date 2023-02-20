@@ -270,4 +270,11 @@ void decoder_output_bitbuffer_array(r_device *decoder, bitbuffer_t const *bitbuf
     }
 }
 */
+#else
+
+void decoder_blackhole(int dummy, ...)
+{
+    // do nothing, on purpose
+}
+
 #endif
