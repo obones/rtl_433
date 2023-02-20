@@ -71,18 +71,19 @@ void decoder_logf_bitrow(r_device *decoder, int level, char const *func, uint8_t
 #endif
         ;
 #else
-// use "empty macros" so that the unused arguments given hard coded strings will not appear in the final binary
-// Note that te decoder_logf method uses its variadic arguments to avoid emitting warnings about unused variables in some decoders
-// calling printf with an empty format string to get a noop. But as this emits a warning, we disable it.
-#if defined(__GNUC__)
-#pragma GCC diagnostic ignored "-Wformat-zero-length"
-#endif
+// Use "empty macros" so that the unused arguments given hard coded strings will not appear in the final binary.
+// Note that te decoder_logf methods uses their variadic arguments to avoid emitting warnings about unused variables in some decoders.
+// This is done by calling a "blackhole function" that does nothing with its arguments. Using printf with an empty format string
+// may not be a noop on some architectures and also emits a warning.
 #define decoder_log(decoder, level, func, msg) /**/
-#define decoder_logf(decoder, level, func, format, ...) printf("", ## __VA_ARGS__) /**/
+#define decoder_logf(decoder, level, func, format, ...) decoder_blackhole(0, ## __VA_ARGS__)
 #define decoder_log_bitbuffer(decoder, level, func, bitbuffer, msg) /**/
-#define decoder_logf_bitbuffer(decoder, level, func, bitbuffer, format, ...) /**/
+#define decoder_logf_bitbuffer(decoder, level, func, bitbuffer, format, ...) decoder_blackhole(0, ## __VA_ARGS__)
 #define decoder_log_bitrow(decoder, level, func, bitrow, bit_len, msg) /**/
-#define decoder_logf_bitrow(decoder, level, func, bitrow, bit_len, format, ...) /**/
+#define decoder_logf_bitrow(decoder, level, func, bitrow, bit_len, format, ...) decoder_blackhole(0, ## __VA_ARGS__)
+
+void decoder_blackhole(int dummy, ...);
+
 #endif
 
 #endif /* INCLUDE_DECODER_UTIL_H_ */
