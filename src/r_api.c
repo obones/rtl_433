@@ -390,12 +390,12 @@ char const **well_known_output_fields(r_cfg_t *cfg)
     list_t field_list = {0};
     list_ensure_size(&field_list, 15);
 
-    list_push(&field_list, "time");
-    list_push(&field_list, "msg");
-    list_push(&field_list, "codes");
+    list_push(&field_list, (char*)"time");
+    list_push(&field_list, (char*)"msg");
+    list_push(&field_list, (char*)"codes");
 
     if (cfg->verbose_bits)
-        list_push(&field_list, "bits");
+        list_push(&field_list, (char*)"bits");
 
     for (void **iter = cfg->data_tags.elems; iter && *iter; ++iter) {
         data_tag_t *tag = *iter;
@@ -408,17 +408,17 @@ char const **well_known_output_fields(r_cfg_t *cfg)
     }
 
     if (cfg->report_protocol)
-        list_push(&field_list, "protocol");
+        list_push(&field_list, (char*)"protocol");
     if (cfg->report_description)
-        list_push(&field_list, "description");
+        list_push(&field_list, (char*)"description");
     if (cfg->report_meta) {
-        list_push(&field_list, "mod");
-        list_push(&field_list, "freq");
-        list_push(&field_list, "freq1");
-        list_push(&field_list, "freq2");
-        list_push(&field_list, "rssi");
-        list_push(&field_list, "snr");
-        list_push(&field_list, "noise");
+        list_push(&field_list, (char*)"mod");
+        list_push(&field_list, (char*)"freq");
+        list_push(&field_list, (char*)"freq1");
+        list_push(&field_list, (char*)"freq2");
+        list_push(&field_list, (char*)"rssi");
+        list_push(&field_list, (char*)"snr");
+        list_push(&field_list, (char*)"noise");
     }
 
     return (char const **)field_list.elems;
