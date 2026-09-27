@@ -95,6 +95,10 @@ struct sdr_dev {
     void *rtlsdr_cb_ctx;
 #endif
 
+#ifdef REDPITAYA
+    // TODO: RP: store what's needed. Frequency?
+#endif
+
     char *dev_info;
 
     int running;
@@ -357,7 +361,6 @@ static int rtltcp_command(sdr_dev_t *dev, char cmd, int param)
 /* RTL-SDR helpers */
 
 #ifdef RTLSDR
-
 static int sdr_open_rtl(sdr_dev_t **out_dev, char const *dev_query, int verbose)
 {
     uint32_t device_count = rtlsdr_get_device_count();
@@ -1138,9 +1141,14 @@ int sdr_open(sdr_dev_t **out_dev, char const *dev_query, int verbose)
     if (dev_query && !strncmp(dev_query, "rtl_tcp", 7))
         return rtltcp_open(out_dev, dev_query, verbose);
 
-#if !defined(RTLSDR) && !defined(SOAPYSDR)
+#if !defined(RTLSDR) && !defined(SOAPYSDR) & !defined(REDPITAYA)
     if (verbose)
-        print_log(LOG_ERROR, __func__, "No input drivers (RTL-SDR or SoapySDR) compiled in.");
+        print_log(LOG_ERROR, __func__, "No input drivers (RTL-SDR or SoapySDR or REDPITAYA) compiled in.");
+    return -1;
+#endif
+
+#ifdef REDPITAYA
+    print_log(LOG_ERROR, __func__, "RedPitaya not ready");
     return -1;
 #endif
 
@@ -1185,6 +1193,10 @@ int sdr_close(sdr_dev_t *dev)
 #ifdef RTLSDR
     if (dev->rtlsdr_dev)
         ret = rtlsdr_close(dev->rtlsdr_dev);
+#endif
+
+#ifdef REDPITAYA
+    // TODO: RP: is it needed?
 #endif
 
 #ifdef THREADS
@@ -1254,6 +1266,10 @@ int sdr_set_center_freq(sdr_dev_t *dev, uint32_t freq, int verbose)
     }
 #endif
 
+#ifdef REDPITAYA
+    // TODO: RP: identify the 8 frequencies mystery
+#endif
+
     if (verbose) {
         if (r < 0)
             print_log(LOG_WARNING, __func__, "Failed to set center freq.");
@@ -1290,6 +1306,10 @@ uint32_t sdr_get_center_freq(sdr_dev_t *dev)
         return rtlsdr_get_center_freq(dev->rtlsdr_dev);
 #endif
 
+#ifdef REDPITAYA
+    // TODO: RP: probably a field inside dev->
+#endif
+
     return 0;
 }
 
@@ -1321,6 +1341,11 @@ int sdr_set_freq_correction(sdr_dev_t *dev, int ppm, int verbose)
         if (r == -2)
             r = 0; // -2 is not an error code
     }
+#endif
+
+#ifdef REDPITAYA
+    // TODO: RP: not sure this is possible
+    r = -1;
 #endif
 
     if (verbose) {
@@ -1357,6 +1382,11 @@ int sdr_set_auto_gain(sdr_dev_t *dev, int verbose)
 #ifdef RTLSDR
     if (dev->rtlsdr_dev)
         r = rtlsdr_set_tuner_gain_mode(dev->rtlsdr_dev, 0);
+#endif
+
+#ifdef REDPITAYA
+    // TODO: RP: probably not supported
+    r = -1;
 #endif
 
     if (verbose) {
@@ -1437,6 +1467,11 @@ int sdr_set_tuner_gain(sdr_dev_t *dev, char const *gain_str, int verbose)
     }
 #endif
 
+#ifdef REDPITAYA
+    // TODO: RP: might not be possible
+    r = -1;
+#endif
+
     return r;
 }
 
@@ -1466,6 +1501,10 @@ int sdr_set_antenna(sdr_dev_t *dev, char const *antenna_str, int verbose)
         }
         return r;
     }
+#endif
+
+#ifdef REDPITAYA
+    // TODO: RP: see if it's at all possible
 #endif
 
   // currently only SoapySDR supports devices with multiple antennas
@@ -1503,6 +1542,11 @@ int sdr_set_sample_rate(sdr_dev_t *dev, uint32_t rate, int verbose)
         r = rtlsdr_set_sample_rate(dev->rtlsdr_dev, rate);
 #endif
 
+#ifdef REDPITAYA
+    // TODO: RP: set one the valid values
+    r = -1;
+#endif
+
     if (verbose) {
         if (r < 0)
             print_log(LOG_WARNING, __func__, "Failed to set sample rate.");
@@ -1537,6 +1581,10 @@ uint32_t sdr_get_sample_rate(sdr_dev_t *dev)
 #ifdef RTLSDR
     if (dev->rtlsdr_dev)
         return rtlsdr_get_sample_rate(dev->rtlsdr_dev);
+#endif
+
+#ifdef REDPITAYA
+    // TODO: RP: probably stored in dev->
 #endif
 
     return 0;
@@ -1657,6 +1705,11 @@ int sdr_apply_settings(sdr_dev_t *dev, char const *sdr_settings, int verbose)
     }
 #endif
 
+#ifdef REDPITAYA
+    // TODO: RP: identify options, most probably none
+    return 0;
+#endif
+
     print_log(LOG_WARNING, __func__, "sdr settings not available."); // no open device
 
     return -1;
@@ -1676,6 +1729,10 @@ int sdr_activate(sdr_dev_t *dev)
     }
 #endif
 
+#ifdef REDPITAYA
+    //TODO: RP: most probably not needed
+#endif
+
     return 0;
 }
 
@@ -1691,6 +1748,10 @@ int sdr_deactivate(sdr_dev_t *dev)
     }
 #endif
 
+#ifdef REDPITAYA
+    // TODO: RP: most probably not needed
+#endif
+
     return 0;
 }
 
@@ -1704,6 +1765,10 @@ int sdr_reset(sdr_dev_t *dev, int verbose)
 #ifdef RTLSDR
     if (dev->rtlsdr_dev)
         r = rtlsdr_reset_buffer(dev->rtlsdr_dev);
+#endif
+
+#ifdef REDPITAYA
+    //TODO: RP: most probably not needed
 #endif
 
     if (verbose) {
@@ -1736,6 +1801,10 @@ int sdr_start_sync(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_nu
         return rtlsdr_read_loop(dev, cb, ctx, buf_num, buf_len);
 #endif
 
+#ifdef REDPITAYA
+    // TODO: RP: write the loop
+#endif
+
     return -1;
 }
 
@@ -1761,6 +1830,11 @@ int sdr_stop_sync(sdr_dev_t *dev)
         dev->running = 0;
         return rtlsdr_cancel_async(dev->rtlsdr_dev);
     }
+#endif
+
+#ifdef REDPITAYA
+    dev->running = 0;
+    return 0;
 #endif
 
     return -1;
