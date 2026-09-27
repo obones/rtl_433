@@ -1,5 +1,280 @@
 # rtl_433
 
+/!\ REDPITAYA ONLY
+
+```
+sudo RTL433_RP_DIAG=1 \
+     RTL433_RP_DUMP=/tmp/rp_iq.raw \
+     ./build-rp/src/rtl_433 -d redpitaya -f 433920000
+```
+
+Pythong analyser
+
+```
+#!/usr/bin/env python3
+
+import sys
+import numpy as np
+
+if len(sys.argv) != 2:
+    print(f"usage: {sys.argv[0]} iq.raw")
+    sys.exit(1)
+
+filename = sys.argv[1]
+
+x = np.fromfile(filename, dtype="<i2")
+
+if len(x) < 2:
+    print("No IQ data.")
+    sys.exit(1)
+
+x = x[:len(x) & ~1]
+
+i = x[0::2].astype(np.float64)
+q = x[1::2].astype(np.float64)
+
+z = i + 1j * q
+mag = np.abs(z)
+
+print(f"samples:       {len(i)}")
+print()
+
+print("I:")
+print(f"  min:         {i.min():10.1f}")
+print(f"  max:         {i.max():10.1f}")
+print(f"  mean:        {i.mean():10.3f}")
+print(f"  RMS:         {np.sqrt(np.mean(i*i)):10.3f}")
+
+print()
+
+print("Q:")
+print(f"  min:         {q.min():10.1f}")
+print(f"  max:         {q.max():10.1f}")
+print(f"  mean:        {q.mean():10.3f}")
+print(f"  RMS:         {np.sqrt(np.mean(q*q)):10.3f}")
+
+print()
+
+print("IQ:")
+print(f"  magnitude min:  {mag.min():10.3f}")
+print(f"  magnitude max:  {mag.max():10.3f}")
+print(f"  magnitude mean: {mag.mean():10.3f}")
+print(f"  magnitude RMS:  {np.sqrt(np.mean(mag*mag)):10.3f}")
+
+print()
+
+# DC offset
+dc = np.mean(z)
+print(f"DC magnitude: {abs(dc):.3f}")
+
+# Estimate phase rotation between adjacent samples.
+phase_diff = np.angle(z[1:] * np.conj(z[:-1]))
+
+print(f"Mean phase step: {np.mean(phase_diff):+.6f} rad/sample")
+print(f"Std phase step:  {np.std(phase_diff):.6f} rad/sample")
+```
+
+Run with `python3 analyze_iq.py /tmp/rp_iq.raw`
+
+
+
+
+What you want to see
+
+With no transmitter nearby, something like:
+
+samples:       102400
+
+I:
+  min:           -820.0
+  max:            790.0
+  mean:          -12.531
+  RMS:            220.7
+
+Q:
+  min:           -760.0
+  max:            810.0
+  mean:            7.421
+  RMS:            218.2
+
+IQ:
+  magnitude min:    12.3
+  magnitude max:   920.1
+  magnitude mean:  275.4
+  magnitude RMS:   311.7
+
+DC magnitude: 14.56
+
+The absolute values will depend heavily on the ADC/input signal, so don't use those numbers as hard limits.
+
+The important things are:
+
+    values aren't all zero;
+
+    values aren't all 32767/-32767;
+
+    I and Q both vary;
+
+    RMS is finite;
+
+    means aren't enormous;
+
+    magnitude changes when an RF signal appears.
+
+10. Test with a known transmitter
+
+This is the test I'd do next.
+
+Set the Red Pitaya to 433.92 MHz:
+
+sudo RTL433_RP_DIAG=1 \
+     RTL433_RP_DUMP=/tmp/rp_iq.raw \
+     ./build-rp/src/rtl_433 \
+     -d redpitaya \
+     -f 433920000
+
+Then transmit something known around 433.92 MHz.
+
+You should see the IQ RMS/magnitude increase.
+
+For example, the diagnostic might change from:
+
+RMS=0.006
+
+to:
+
+RMS=0.120
+
+or similar.
+
+The exact number isn't important; the change is.
+11. Check the sample rate independently
+
+There is a particularly useful diagnostic I'd add to the first block:
+
+if (getenv("RTL433_RP_DIAG") && dev->rp_diag_blocks == 0) {
+    print_logf(
+        LOG_NOTICE,
+        "SDR",
+        "RP configuration: sample_rate=%u center=%u "
+        "rx_rate=%u fifo_count=%u",
+        dev->sample_rate,
+        dev->center_frequency,
+        (unsigned)*dev->rx_rate,
+        (unsigned)*dev->rx_cntr);
+}
+
+You want to see, for example:
+
+RP configuration: sample_rate=48000 center=433920000 rx_rate=1000 fifo_count=1024
+
+If you request:
+
+-f 433920000
+
+you should not see:
+
+center=433920000
+rx_rate=433920000
+
+The latter would mean your sdr_set_sample_rate() integration is wrong.
+
+12. Check the actual spectrum
+
+This is the most useful diagnostic after the numerical statistics.
+
+Because the dump is standard CS16 IQ, you can plot it with Python:
+
+#!/usr/bin/env python3
+
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.fromfile(sys.argv[1], dtype="<i2")
+
+x = x[:len(x) & ~1]
+
+z = x[0::2].astype(np.float32) + 1j * x[1::2].astype(np.float32)
+
+n = min(len(z), 65536)
+z = z[:n]
+
+window = np.hanning(n)
+
+spectrum = np.fft.fftshift(
+    np.fft.fft(z * window)
+)
+
+freq = np.fft.fftshift(
+    np.fft.fftfreq(n, 1.0 / 48000.0)
+)
+
+power = 20 * np.log10(
+    np.maximum(np.abs(spectrum), 1e-12)
+)
+
+plt.plot(freq / 1000.0, power)
+
+plt.xlabel("Frequency relative to DDC (kHz)")
+plt.ylabel("Magnitude (dB)")
+plt.grid()
+
+plt.show()
+
+Then:
+
+python3 spectrum.py /tmp/rp_iq.raw
+
+For a continuous carrier, you should see a clear peak.
+
+This is particularly useful for determining whether the DDC is producing the expected positive/negative frequency orientation.
+13. One diagnostic that will tell us I/Q orientation
+
+If you have a continuous carrier, calculate:
+
+phase[n] = atan2(Q[n], I[n])
+
+and look at the phase change from sample to sample.
+
+For example, add this to the Python analyzer:
+
+phase = np.unwrap(np.angle(z))
+
+dphase = np.diff(phase)
+
+# Ignore very small-signal samples where phase is essentially noise.
+mask = np.abs(z[:-1]) > 1000
+
+if np.any(mask):
+    print()
+    print("Carrier phase direction:")
+    print(f"  mean phase step = {np.mean(dphase[mask]):+.6e} rad/sample")
+
+If the carrier is close enough to the DDC frequency that it remains coherent, you'll get a positive or negative phase increment.
+
+If you swap:
+
+I = channel 0;
+Q = channel 1;
+
+to:
+
+I = channel 1;
+Q = channel 0;
+
+the phase direction changes. Likewise, negating Q reverses it.
+
+This lets us definitively determine whether the FPGA output should be:
+
+I = rp[n * 16 + 0];
+Q = rp[n * 16 + 1];
+
+or:
+
+I = rp[n * 16 + 0];
+Q = -rp[n * 16 + 1];
+
 rtl_433 (despite the name) is a generic data receiver, mainly for the 433.92 MHz, 868 MHz (SRD), 315 MHz, 345 MHz, and 915 MHz ISM bands.
 
 The official source code is in the https://github.com/merbanan/rtl_433/ repository.

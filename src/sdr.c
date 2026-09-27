@@ -46,6 +46,7 @@ int __attribute__((weak)) rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on);
 #ifdef REDPITAYA
 #include <fcntl.h>
 #include <math.h>
+#include <float.h>
 #include <sys/mman.h>
 #endif
 
@@ -112,6 +113,10 @@ struct sdr_dev {
     volatile uint16_t* rx_rate;
     volatile uint32_t* rx_freq;
     volatile uint16_t* rx_cntr;
+
+    /* Diagnostic output. */
+    FILE* rp_diag_file;
+    unsigned long rp_diag_blocks;
 #endif
 
     char *dev_info;
@@ -1256,6 +1261,28 @@ static int redpitaya_open(sdr_dev_t** out_dev, int verbose)
 
     *dev->rx_rst |= 1;
 
+    const char* dump_path = getenv("RTL433_RP_DUMP");
+
+    if (dump_path && *dump_path) {
+        dev->rp_diag_file = fopen(dump_path, "wb");
+
+        if (!dev->rp_diag_file) {
+            print_logf(LOG_WARNING, "SDR",
+                "Unable to open Red Pitaya IQ dump '%s'",
+                dump_path);
+        }
+        else {
+            print_logf(LOG_NOTICE, "SDR",
+                "Red Pitaya IQ dump: %s",
+                dump_path);
+        }
+    }
+
+    if (getenv("RTL433_RP_DIAG")) {
+        print_log(LOG_NOTICE, "SDR",
+            "Red Pitaya IQ diagnostics enabled");
+    }
+
     if (verbose) {
         print_log(LOG_NOTICE, "SDR",
             "Using RedPitaya SDR receiver");
@@ -1391,6 +1418,62 @@ static int redpitaya_read_loop(
             rp_fifo_bytes);
 
         /*
+         * Diagnostic information about the raw FPGA floats.
+         */
+        if (getenv("RTL433_RP_DIAG")) {
+            float min_i = FLT_MAX;
+            float max_i = -FLT_MAX;
+            float min_q = FLT_MAX;
+            float max_q = -FLT_MAX;
+
+            double sum_i = 0.0;
+            double sum_q = 0.0;
+            double power = 0.0;
+
+            for (unsigned n = 0; n < RP_FIFO_SAMPLES; ++n) {
+                float i = rp_buffer[n * RP_CHANNELS + 0];
+                float q = rp_buffer[n * RP_CHANNELS + 1];
+
+                if (i < min_i) min_i = i;
+                if (i > max_i) max_i = i;
+
+                if (q < min_q) min_q = q;
+                if (q > max_q) max_q = q;
+
+                sum_i += i;
+                sum_q += q;
+
+                power += (double)i * i +
+                    (double)q * q;
+            }
+
+            double mean_i =
+                sum_i / RP_FIFO_SAMPLES;
+
+            double mean_q =
+                sum_q / RP_FIFO_SAMPLES;
+
+            double rms =
+                sqrt(power /
+                    (2.0 * RP_FIFO_SAMPLES));
+
+            unsigned fifo_count = *dev->rx_cntr;
+
+            print_logf(
+                LOG_NOTICE,
+                "SDR",
+                "RP IQ block %lu: FIFO=%u "
+                "I=[%.6f, %.6f] mean=%+.6f "
+                "Q=[%.6f, %.6f] mean=%+.6f "
+                "RMS=%.6f",
+                ++dev->rp_diag_blocks,
+                fifo_count,
+                min_i, max_i, mean_i,
+                min_q, max_q, mean_q,
+                rms);
+        }
+
+        /*
          * Convert the first DDC's float IQ stream to CS16.
          */
         int16_t* buffer =
@@ -1424,6 +1507,21 @@ static int redpitaya_read_loop(
 
             buffer[2 * n + 0] = (int16_t)si;
             buffer[2 * n + 1] = (int16_t)sq;
+        }
+
+        if (dev->rp_diag_file) {
+            size_t written = fwrite(
+                buffer,
+                1,
+                rp_iq_bytes,
+                dev->rp_diag_file);
+
+            if (written != rp_iq_bytes) {
+                print_log(LOG_WARNING, "SDR",
+                    "Short write to Red Pitaya IQ dump");
+            }
+
+            fflush(dev->rp_diag_file);
         }
 
         /*
@@ -1568,6 +1666,11 @@ int sdr_close(sdr_dev_t *dev)
 
     if (dev->rp_mem_fd >= 0)
         close(dev->rp_mem_fd);
+
+    if (dev->rp_diag_file) {
+        fclose(dev->rp_diag_file);
+        dev->rp_diag_file = NULL;
+    }
 #endif
 
 #ifdef THREADS
