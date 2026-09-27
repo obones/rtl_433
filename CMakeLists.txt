@@ -242,6 +242,31 @@ else()
 endif()
 
 ########################################################################
+# Find/enable Red Pitaya device input
+########################################################################
+
+set(ENABLE_REDPITAYA AUTO CACHE STRING "Enable Red Pitaya device input")
+set_property(CACHE ENABLE_REDPITAYA PROPERTY STRINGS AUTO ON OFF)
+
+if(ENABLE_REDPITAYA STREQUAL "AUTO")
+    set(ENABLE_REDPITAYA ON)
+endif()
+
+if(ENABLE_REDPITAYA)
+
+    message(STATUS "Red Pitaya device input will be compiled.")
+    ADD_DEFINITIONS(-DREDPITAYA)
+
+    # Red Pitaya is the only SDR backend for this build.
+    set(ENABLE_RTLSDR OFF CACHE STRING "Enable RTL-SDR (lbrtlsdr) driver support" FORCE)
+    set(ENABLE_SOAPYSDR OFF CACHE STRING "Enable SoapySDR driver support" FORCE)
+else()
+
+    message(STATUS "Red Pitaya device input disabled.")
+
+endif()
+
+########################################################################
 # Find LibRTLSDR build dependencies
 ########################################################################
 set(ENABLE_RTLSDR ON CACHE STRING "Enable RTL-SDR (lbrtlsdr) driver support")
