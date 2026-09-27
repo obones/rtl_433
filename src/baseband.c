@@ -19,6 +19,11 @@
 #include "logger.h"
 #include "r_util.h"
 
+#ifdef _MSC_VER
+#define _USE_MATH_DEFINES // for C
+#include <math.h>
+#endif
+
 static uint16_t scaled_squares[256];
 
 /// precalculate lookup table for envelope detection.

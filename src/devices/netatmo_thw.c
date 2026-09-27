@@ -13,6 +13,11 @@
 #include "decoder.h"
 #include <math.h>
 
+#ifdef _MSC_VER
+#define _USE_MATH_DEFINES // for C
+#include <math.h>
+#endif
+
 /** @fn static int netatmo_thw_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 NetAtmo outdoor temperature/humidity sensor and ultrasonic anemometer.
 
