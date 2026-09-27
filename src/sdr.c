@@ -43,6 +43,11 @@ int __attribute__((weak)) rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on);
 #define SoapySDR_free(ptr) free(ptr)
 #endif
 #endif
+#ifdef REDPITAYA
+#include <fcntl.h>
+#include <math.h>
+#include <sys/mman.h>
+#endif
 
 #ifndef _MSC_VER
 #include <unistd.h>
@@ -96,7 +101,17 @@ struct sdr_dev {
 #endif
 
 #ifdef REDPITAYA
-    // TODO: RP: store what's needed. Frequency?
+    int rp_mem_fd;
+
+    volatile uint8_t* rp_cfg;
+    volatile uint8_t* rp_sts;
+    volatile uint8_t* rp_fifo;
+
+    volatile uint8_t* rx_rst;
+    volatile uint8_t* rx_sel;
+    volatile uint16_t* rx_rate;
+    volatile uint32_t* rx_freq;
+    volatile uint16_t* rx_cntr;
 #endif
 
     char *dev_info;
@@ -1134,6 +1149,341 @@ static int soapysdr_read_loop(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint
 
 #endif
 
+#ifdef REDPITAYA
+
+static int redpitaya_open(sdr_dev_t** out_dev, int verbose)
+{
+    const size_t page_size = (size_t)sysconf(_SC_PAGESIZE);
+
+    sdr_dev_t* dev = calloc(1, sizeof(sdr_dev_t));
+    if (!dev) {
+        WARN_CALLOC("redpitaya_open()");
+        return -1;
+    }
+
+    dev->rp_mem_fd = -1;
+
+#ifdef THREADS
+    pthread_mutex_init(&dev->lock, NULL);
+#endif
+
+    dev->rp_mem_fd = open("/dev/mem", O_RDWR);
+    if (dev->rp_mem_fd < 0) {
+        perror("/dev/mem");
+        goto fail;
+    }
+
+    dev->rp_cfg = mmap(
+        NULL,
+        page_size,
+        PROT_READ | PROT_WRITE,
+        MAP_SHARED,
+        dev->rp_mem_fd,
+        0x40000000);
+
+    dev->rp_sts = mmap(
+        NULL,
+        page_size,
+        PROT_READ | PROT_WRITE,
+        MAP_SHARED,
+        dev->rp_mem_fd,
+        0x41000000);
+
+    dev->rp_fifo = mmap(
+        NULL,
+        32 * page_size,
+        PROT_READ | PROT_WRITE,
+        MAP_SHARED,
+        dev->rp_mem_fd,
+        0x42000000);
+
+    if (dev->rp_cfg == MAP_FAILED ||
+        dev->rp_sts == MAP_FAILED ||
+        dev->rp_fifo == MAP_FAILED) {
+        perror("mmap");
+        goto fail;
+    }
+
+    dev->rx_rst = dev->rp_cfg + 0;
+    dev->rx_sel = dev->rp_cfg + 1;
+    dev->rx_rate = (volatile uint16_t*)(dev->rp_cfg + 2);
+    dev->rx_freq = (volatile uint32_t*)(dev->rp_cfg + 4);
+
+    dev->rx_cntr = (volatile uint16_t*)(dev->rp_sts + 0);
+
+    /*
+     * The FPGA produces complex I/Q samples as floating point,
+     * but rtl_433's normal processing path expects signed 16-bit IQ.
+     *
+     * One complex sample = I + Q = 4 bytes.
+     */
+    dev->sample_size = sizeof(int16_t) * 2;
+    dev->sample_signed = 1;
+
+    dev->sample_rate = 48000;
+    dev->center_frequency = 600000;
+
+    dev->dev_info = strdup(
+        "{\"vendor\":\"RedPitaya\", \"product\":\"SDR receiver\"}");
+
+    if (!dev->dev_info) {
+        WARN_MALLOC("redpitaya_open()");
+        goto fail;
+    }
+
+    /*
+     * Initial FPGA configuration.
+     *
+     * rx_sel = 0:
+     *     select the first DDC/IQ path.
+     *
+     * rx_rate = 1000:
+     *     produces 48 kS/s after the fixed FPGA filtering.
+     */
+    *dev->rx_rst &= ~1;
+    *dev->rx_sel = 0;
+    *dev->rx_rate = 1000;
+
+    /*
+     * Default DDC frequency: 600 kHz.
+     *
+     * The original Red Pitaya server initializes all eight
+     * phase accumulators. rtl_433 only consumes DDC 0.
+     */
+    dev->rx_freq[0] =
+        (uint32_t)floor(
+            600000.0 / 125.0e6 * 0xffffffff + 0.5);
+
+    *dev->rx_rst |= 1;
+
+    if (verbose) {
+        print_log(LOG_NOTICE, "SDR",
+            "Using RedPitaya SDR receiver");
+    }
+
+    *out_dev = dev;
+    return 0;
+
+fail:
+    if (dev->rp_fifo != NULL &&
+        dev->rp_fifo != MAP_FAILED)
+        munmap((void*)dev->rp_fifo, 32 * page_size);
+
+    if (dev->rp_sts != NULL &&
+        dev->rp_sts != MAP_FAILED)
+        munmap((void*)dev->rp_sts, page_size);
+
+    if (dev->rp_cfg != NULL &&
+        dev->rp_cfg != MAP_FAILED)
+        munmap((void*)dev->rp_cfg, page_size);
+
+    if (dev->rp_mem_fd >= 0)
+        close(dev->rp_mem_fd);
+
+#ifdef THREADS
+    pthread_mutex_destroy(&dev->lock);
+#endif
+
+    free(dev->dev_info);
+    free(dev);
+
+    return -1;
+}
+
+static int redpitaya_read_loop(
+    sdr_dev_t* dev,
+    sdr_event_cb_t cb,
+    void* ctx,
+    uint32_t buf_num,
+    uint32_t buf_len)
+{
+    /*
+     * One FPGA FIFO entry:
+     *
+     *     512 bits = 64 bytes
+     *
+     * It contains 16 float32 values.
+     *
+     * DDC 0:
+     *     channel 0 = I
+     *     channel 1 = Q
+     */
+    enum {
+        RP_CHANNELS = 16,
+        RP_FIFO_WORD_SIZE = RP_CHANNELS * sizeof(float),
+        RP_FIFO_SAMPLES = 1024
+    };
+
+    /*
+     * One Red Pitaya FIFO block contains:
+     *
+     *     1024 × 64 = 65536 bytes
+     *
+     * and therefore 1024 complex IQ samples.
+     */
+    const size_t rp_fifo_bytes =
+        RP_FIFO_SAMPLES * RP_FIFO_WORD_SIZE;
+
+    /*
+     * rtl_433's output is CS16:
+     *
+     *     I16, Q16, I16, Q16, ...
+     *
+     * 1024 samples = 4096 bytes.
+     */
+    const size_t rp_iq_bytes =
+        RP_FIFO_SAMPLES * sizeof(int16_t) * 2;
+
+    /*
+     * Use the existing sdr_dev buffer, just like the other
+     * input backends.
+     */
+    size_t buffer_size = (size_t)buf_num * buf_len;
+
+    if (buffer_size < rp_iq_bytes)
+        buffer_size = rp_iq_bytes;
+
+    if (dev->buffer_size != buffer_size) {
+        free(dev->buffer);
+
+        dev->buffer = malloc(buffer_size);
+        if (!dev->buffer) {
+            WARN_MALLOC("redpitaya_read_loop()");
+            return -1;
+        }
+
+        dev->buffer_size = buffer_size;
+        dev->buffer_pos = 0;
+    }
+
+    float* rp_buffer = malloc(1024 * 16 * sizeof(float));
+    if (!rp_buffer) {
+        WARN_MALLOC("redpitaya_read_loop()");
+        return -1;
+    }
+    //float rp_buffer[RP_FIFO_SAMPLES * RP_CHANNELS];
+
+    dev->running = 1;
+
+    while (dev->running) {
+
+        /*
+         * The original Red Pitaya application waits until
+         * at least 1024 FIFO entries are available.
+         */
+        if (*dev->rx_cntr < RP_FIFO_SAMPLES) {
+            usleep(500);
+            continue;
+        }
+
+        /*
+         * Read one complete FIFO block.
+         *
+         * IMPORTANT:
+         *
+         * rp_fifo is an AXI FIFO data port, not ordinary RAM.
+         * Reading it with memcpy() consumes FIFO entries.
+         */
+
+        memcpy(
+            rp_buffer,
+            (const void*)dev->rp_fifo,
+            rp_fifo_bytes);
+
+        /*
+         * Convert the first DDC's float IQ stream to CS16.
+         */
+        int16_t* buffer =
+            (int16_t*)&dev->buffer[dev->buffer_pos];
+
+        for (unsigned n = 0; n < RP_FIFO_SAMPLES; ++n) {
+
+            /*
+             * Each sample has 16 float channels.
+             *
+             * DDC 0 is channels 0 and 1.
+             */
+            float i = rp_buffer[n * RP_CHANNELS + 0];
+            float q = rp_buffer[n * RP_CHANNELS + 1];
+
+            int si = (int)(i * INT16_MAX);
+            int sq = (int)(q * INT16_MAX);
+
+            /*
+             * Clamp to signed 16-bit range.
+             */
+            if (si < -INT16_MAX)
+                si = -INT16_MAX;
+            else if (si > INT16_MAX)
+                si = INT16_MAX;
+
+            if (sq < -INT16_MAX)
+                sq = -INT16_MAX;
+            else if (sq > INT16_MAX)
+                sq = INT16_MAX;
+
+            buffer[2 * n + 0] = (int16_t)si;
+            buffer[2 * n + 1] = (int16_t)sq;
+        }
+
+        /*
+         * The FIFO is 2048 entries deep.
+         *
+         * The original application resets it when 2048 entries
+         * have accumulated, before reading the next block.
+         */
+        if (*dev->rx_cntr >= 2048) {
+            *dev->rx_rst &= ~1;
+            *dev->rx_rst |= 1;
+        }
+
+#ifdef THREADS
+        pthread_mutex_lock(&dev->lock);
+#endif
+
+        uint32_t sample_rate = dev->sample_rate;
+        uint32_t center_frequency = dev->center_frequency;
+
+#ifdef THREADS
+        pthread_mutex_unlock(&dev->lock);
+#endif
+
+        sdr_event_t ev = {
+            .ev = SDR_EV_DATA,
+            .sample_rate = sample_rate,
+            .center_frequency = center_frequency,
+            .buf = buffer,
+            .len = rp_iq_bytes,
+        };
+
+#ifdef THREADS
+        pthread_mutex_lock(&dev->lock);
+        int exit_acquire = dev->exit_acquire;
+        pthread_mutex_unlock(&dev->lock);
+
+        if (exit_acquire)
+            break;
+#endif
+
+        cb(&ev, ctx);
+
+        /*
+         * We only have one block in this implementation.
+         *
+         * Keep the buffer position at zero because the callback
+         * has finished consuming the event before we reuse it.
+         */
+        dev->buffer_pos = 0;
+    }
+
+    free(rp_buffer);
+
+    return 0;
+}
+
+#endif
+
+
 /* Public API */
 
 int sdr_open(sdr_dev_t **out_dev, char const *dev_query, int verbose)
@@ -1148,8 +1498,7 @@ int sdr_open(sdr_dev_t **out_dev, char const *dev_query, int verbose)
 #endif
 
 #ifdef REDPITAYA
-    print_log(LOG_ERROR, __func__, "RedPitaya not ready");
-    return -1;
+    return redpitaya_open(out_dev, verbose);
 #endif
 
     /* Open RTLSDR by default or if index or serial given, if available */
@@ -1196,7 +1545,29 @@ int sdr_close(sdr_dev_t *dev)
 #endif
 
 #ifdef REDPITAYA
-    // TODO: RP: is it needed?
+    if (dev->rx_rst)
+        *dev->rx_rst &= ~1;
+
+    if (dev->rp_fifo &&
+        dev->rp_fifo != MAP_FAILED) {
+        munmap((void*)dev->rp_fifo,
+            32 * (size_t)sysconf(_SC_PAGESIZE));
+    }
+
+    if (dev->rp_sts &&
+        dev->rp_sts != MAP_FAILED) {
+        munmap((void*)dev->rp_sts,
+            (size_t)sysconf(_SC_PAGESIZE));
+    }
+
+    if (dev->rp_cfg &&
+        dev->rp_cfg != MAP_FAILED) {
+        munmap((void*)dev->rp_cfg,
+            (size_t)sysconf(_SC_PAGESIZE));
+    }
+
+    if (dev->rp_mem_fd >= 0)
+        close(dev->rp_mem_fd);
 #endif
 
 #ifdef THREADS
@@ -1267,7 +1638,24 @@ int sdr_set_center_freq(sdr_dev_t *dev, uint32_t freq, int verbose)
 #endif
 
 #ifdef REDPITAYA
-    // TODO: RP: identify the 8 frequencies mystery
+    if (dev->rx_freq) {
+        double integral;
+
+        /*
+         * The Red Pitaya DDC runs from the 125 MHz FPGA clock.
+         *
+         * modf() is important here because rtl_433 frequencies
+         * such as 433.92 MHz and 868 MHz are above 125 MHz.
+         * The original Red Pitaya server uses the same operation.
+         */
+        double phase =
+            modf((double)freq / 125.0e6, &integral);
+
+        dev->rx_freq[0] =
+            (uint32_t)floor(phase * 0xffffffff + 0.5);
+
+        r = 0;
+    }
 #endif
 
     if (verbose) {
@@ -1307,7 +1695,7 @@ uint32_t sdr_get_center_freq(sdr_dev_t *dev)
 #endif
 
 #ifdef REDPITAYA
-    // TODO: RP: probably a field inside dev->
+    return dev->center_frequency;
 #endif
 
     return 0;
@@ -1543,8 +1931,26 @@ int sdr_set_sample_rate(sdr_dev_t *dev, uint32_t rate, int verbose)
 #endif
 
 #ifdef REDPITAYA
-    // TODO: RP: set one the valid values
-    r = -1;
+    if (dev->rx_rate) {
+        uint32_t actual_rate;
+
+        if (rate <= 48000) {
+            *dev->rx_rate = 1000;
+            actual_rate = 48000;
+        }
+        else if (rate <= 96000) {
+            *dev->rx_rate = 500;
+            actual_rate = 96000;
+        }
+        else {
+            *dev->rx_rate = 250;
+            actual_rate = 192000;
+        }
+
+        r = 0;
+
+        rate = actual_rate;
+    }
 #endif
 
     if (verbose) {
@@ -1584,7 +1990,7 @@ uint32_t sdr_get_sample_rate(sdr_dev_t *dev)
 #endif
 
 #ifdef REDPITAYA
-    // TODO: RP: probably stored in dev->
+    return dev->sample_rate;
 #endif
 
     return 0;
@@ -1802,7 +2208,7 @@ int sdr_start_sync(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_nu
 #endif
 
 #ifdef REDPITAYA
-    // TODO: RP: write the loop
+    return redpitaya_read_loop(dev, cb, ctx, buf_num, buf_len);
 #endif
 
     return -1;
