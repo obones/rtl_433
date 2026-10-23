@@ -8,7 +8,25 @@ sudo RTL433_RP_DIAG=1 \
      ./build-rp/src/rtl_433 -d redpitaya -f 433920000
 ```
 
-Pythong analyser
+```
+cmake \
+    -S . \
+    -B build-redpitaya \
+    -DCMAKE_TOOLCHAIN_FILE=../armv7.cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DENABLE_RTLSDR=OFF \
+    -DENABLE_SOAPYSDR=OFF \
+    -DENABLE_OPENSSL=OFF \
+    -DBUILD_TESTING=OFF \
+    -DBUILD_DOCUMENTATION=OFF \
+    -DCMAKE_EXE_LINKER_FLAGS=-static
+```
+
+```
+cmake --build build-redpitaya --verbose -j1
+```
+
+Python analyser
 
 ```
 #!/usr/bin/env python3
